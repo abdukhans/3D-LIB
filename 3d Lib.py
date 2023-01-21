@@ -115,13 +115,32 @@ class Tris3D:
         self.l3.draw(window)
 
         
+class Mesh:
+    def __init__(self, lst3d_tris):
+        self.lst3d_tris = lst3d_tris
+    
+    def move(self,trans_vec):
+        pass
+
+
+"""        
+    def draw (self, window: GraphWin):
+        self.camera.draw_tris(self.lst3d_tris,window)
+        pass
+
+    def unDraw (self):
+        self.camera.unDrawTris(self.lst3d_tris)
+"""
+
 
 
 class Camera:
-    def __init__(self, mid_vec:Vec3D, norm_vec, b1:Vec3D, b2:Vec3D, height=1 , width=1 ):
+    def __init__(self, mid_vec:Vec3D, norm_vec, b1:Vec3D, b2:Vec3D, window: GraphWin, height=1 , width=1 ):
 
         self.mid_poi = mid_vec
-        self.norm_vec = norm_vec
+        self.norm_vec = norm_vec    
+
+        self.window = window
 
         self.height = height
         self.wdith = width
@@ -149,9 +168,9 @@ class Camera:
         self.mid_poi.printVec()
 
 
-    def draw_tris (self,lst_tri3D, window: GraphWin):
+    def draw_tris (self,lst_tri3D):
         for tri in lst_tri3D:
-            self.draw_tri(tri,window)
+            self.draw_tri(tri)
 
 
     def unDrawTris(self,lst_tri3D):
@@ -168,7 +187,7 @@ class Camera:
 
 
         pass
-    def draw_tri (self, tri3D, window: GraphWin ):
+    def draw_tri (self, tri3D ):
         lst_points = []
         for vec in tri3D.getPoints():
             #TODO implement clipping
@@ -182,6 +201,7 @@ class Camera:
         tri3D.l2 = Line (p2,p3)
         tri3D.l3 = Line(p3,p1)
 
+        window = self.window
         tri3D.l1.draw(window)
         tri3D.l2.draw(window)
         tri3D.l3.draw(window)   
@@ -191,12 +211,12 @@ class Camera:
         
         
 
-    def draw(self, lst_vec3d, window):
+    def draw(self, lst_vec3d):
 
         for i in lst_vec3d:
             print(i)
             porj_point = self.calc(i)
-            porj_point.draw(window)
+            porj_point.draw(self.window)
 
 
         return
@@ -259,24 +279,24 @@ class Camera:
         self.mid_poi.add_z(incr)
         self.player_head.add_z(incr)
 
+    def drawMesh (self,mesh: Mesh ):
+        self.draw_tris(mesh.lst3d_tris)
 
-class Mesh:
-    def __init__(self, lst3d_tris, cam: Camera):
-        self.lst3d_tris = lst3d_tris
-        self.camera = cam
+    def undrawMesh (self,mesh:Mesh):
+
+        self.unDrawTris(mesh.lst3d_tris)
+
+
+
     
-    def move(self,trans_vec):
-        pass
-
-    def draw (self, window: GraphWin):
-        self.camera.draw_tris(self.lst3d_tris,window)
-        pass
-
-    def unDraw (self):
-        self.camera.unDrawTris(self.lst3d_tris)
 
 
 
+
+
+win = GraphWin("Lib", 1000 ,1000,autoflush=False)
+win.setBackground("white")
+win.setCoords(-3,-3,3,3)
 
 
     
@@ -284,7 +304,7 @@ mid_poi  = Vec3D(0,-3,0)
 norm_vec = Vec3D(0,-1,0)
 b1       = Vec3D (1,0,0)
 b2       = Vec3D (0,0,1)
-cam      = Camera(mid_poi, norm_vec,b1,b2)
+cam      = Camera(mid_poi, norm_vec,b1,b2,win)
 v1       = Vec3D(1,1,1) 
 v2       = Vec3D(1,1,-1)
 v3       = Vec3D(1,-1,-1)
@@ -308,7 +328,7 @@ tri11    = Tris3D(v1,v2,v6)
 tri12    = Tris3D(v6,v1,v5)
 tri13    = Tris3D(v8,v7,v1)
 lst_tris = [tri1,tri2,tri3, tri4,tri5,tri6,tri7,tri8,tri9,tri10,tri11,tri12,tri13]
-cube     = Mesh(lst_tris,cam)
+cube     = Mesh(lst_tris)
 
 """
 mesh_cube =[Vec3D(1,1+4,1)    ,Vec3D(1,1+4,-1),
@@ -317,9 +337,8 @@ mesh_cube =[Vec3D(1,1+4,1)    ,Vec3D(1,1+4,-1),
             Vec3D(-1,-1+4,-1) ,Vec3D(-1,-1+4,1) ]
 """
 
-win = GraphWin("Lib", 1000 ,1000,autoflush=False)
-win.setBackground("white")
-win.setCoords(-3,-3,3,3)
+
+
 i = 0
 step = 0.1
 while(True):
@@ -330,17 +349,17 @@ while(True):
     w  = win32api.GetKeyState (0x57)
     s  = win32api.GetKeyState (0x53)
     if (upArr!=0 and upArr!= 1):
-        cube.camera.incrementY(step)
+        cam.incrementY(step)
     if(downArr !=0 and downArr != 1 ):
-        cube.camera.incrementY(-step)
+        cam.incrementY(-step)
     if(righArr !=0 and righArr != 1 ):
-        cube.camera.incrementX(step)
+        cam.incrementX(step)
     if(leftArr !=0 and leftArr != 1 ):
-        cube.camera.incrementX(-step)
+        cam.incrementX(-step)
     if(w !=0 and  w != 1 ):
-        cube.camera.incrementZ(step)
+        cam.incrementZ(step)
     if(s !=0 and  s != 1 ):
-        cube.camera.incrementZ(-step)   
+        cam.incrementZ(-step)   
 
     ang = 0.00005 
     for vec in lst_vs:
@@ -354,11 +373,11 @@ while(True):
     ##cam.draw(mesh_cube,win)
     ##lst_tris = [tri1,tri2,tri3, tri4,tri5,tri6,tri7,tri8,tri9,tri10,tri11,tri12]
     ##cam.draw_tris(lst_tris,win)
-    cube.draw(win)
+    cam.drawMesh(cube)
 
     update(30)
 
-    cube.unDraw()
+    cam.undrawMesh(cube)
 print("DONE!!!!!!!!!!!!!!!!!!!")
 win.getMouse()
 win.close()
