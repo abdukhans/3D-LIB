@@ -105,22 +105,26 @@ class Tris3D:
         self.p1 = p1
         self.p2 = p2 
         self.p3 = p3
+
        
     def getPoints(self) :
         return [self.p1,self.p2,self.p3]
 
+    
+
+    """
     def drawTri(self,window: GraphWin):
         self.l1.draw(window)
         self.l2.draw(window)
         self.l3.draw(window)
-
+    """
         
 class Mesh:
     def __init__(self, lst3d_tris):
         self.lst3d_tris = lst3d_tris
     
     def move(self,trans_vec):
-        pass
+        pass            
 
 
 """        
@@ -138,7 +142,7 @@ class Camera:
     def __init__(self, mid_vec:Vec3D, norm_vec, b1:Vec3D, b2:Vec3D, window: GraphWin, height=1 , width=1 ):
 
         self.mid_poi = mid_vec
-        self.norm_vec = norm_vec    
+        self.norm_vec = norm_vec        
 
         self.window = window
 
@@ -170,16 +174,18 @@ class Camera:
 
     def draw_tris (self,lst_tri3D):
         for tri in lst_tri3D:
-            self.draw_tri(tri)
-
+            lst_tri = self.clip(tri)
+            for v in  lst_tri:
+                self.draw_tri(v)
 
     def unDrawTris(self,lst_tri3D):
-
         for tri in lst_tri3D:
-            self.unDrawTri(tri) 
+            lst_tri = self.clip(tri)
+            for v in  lst_tri:
+                self.unDrawTri(v)
         
 
-    def unDrawTri(self,tri3D):
+    def unDrawTri(self,tri3D:Tris3D):
         
         tri3D.l1.undraw()
         tri3D.l2.undraw()
@@ -190,7 +196,6 @@ class Camera:
     def draw_tri (self, tri3D ):
         lst_points = []
         for vec in tri3D.getPoints():
-            #TODO implement clipping
             lst_points.append(self.calc(vec))
 
         p1 = lst_points[0]
@@ -262,7 +267,7 @@ class Camera:
             #print(Point(proj_x , proj_y))
             
             return Point(proj_x , proj_y)
-        else:
+        else: 
 
          
 
@@ -285,6 +290,14 @@ class Camera:
     def undrawMesh (self,mesh:Mesh):
 
         self.unDrawTris(mesh.lst3d_tris)
+
+    def clip (self, tri : Tris3D):
+
+        #TODO implement clipping
+
+        
+
+        return [tri]
 
 
 
