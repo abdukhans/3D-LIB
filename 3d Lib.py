@@ -100,6 +100,10 @@ class Vec3D:
         pass
 
 
+
+
+
+
 class Tris3D:
     def __init__(self, p1:Vec3D,p2:Vec3D, p3:Vec3D):
         self.p1 = p1
@@ -274,15 +278,22 @@ class Camera:
             return Point(proj_x  , proj_y)
     def incrementY (self, incr):
         self.mid_poi.add_y(incr)
-        self.player_head.add_y(incr)
+        self.player_head = self.mid_poi.addVec(self.norm_vec) 
 
     def incrementX (self,incr):
         self.mid_poi.add_x(incr)
-        self.player_head.add_x(incr)
+        self.player_head = self.mid_poi.addVec(self.norm_vec) 
 
     def incrementZ(self, incr):
         self.mid_poi.add_z(incr)
-        self.player_head.add_z(incr)
+        self.player_head = self.mid_poi.addVec(self.norm_vec) 
+
+    def rotate(angle):
+
+        #TODO implement rotating
+
+
+        return
 
     def drawMesh (self,mesh: Mesh ):
         self.draw_tris(mesh.lst3d_tris)
@@ -299,6 +310,65 @@ class Camera:
 
         return [tri]
 
+    def rotateZ_(self, angle):
+
+
+        self.norm_vec.rotateZ_(angle)
+
+        self.player_head = self.mid_poi.addVec(self.norm_vec) 
+
+        self.b1.rotateZ_(angle)
+        self.b2.rotateZ_(angle)
+
+        return
+
+    def rotateY_ (self,angle):
+
+        
+        self.norm_vec.rotateY_(angle)
+
+        self.player_head = self.mid_poi.addVec(self.norm_vec) 
+
+        self.b1.rotateY_(angle)
+        self.b2.rotateY_(angle)
+
+        return  
+
+    def rotateX_ (self,angle):
+
+        
+        self.norm_vec.rotateX_(angle)
+
+        self.player_head = self.mid_poi.addVec(self.norm_vec) 
+
+        self.b1.rotateX_(angle)
+        self.b2.rotateX_(angle)
+
+        return  
+
+    def forward (self,magnitude):
+        dir = -1* self.norm_vec
+        
+
+        vec = magnitude * dir
+
+        self.player_head = self.player_head.addVec(vec)
+
+
+    def backward (self,magnitude):
+        dir =  self.norm_vec
+        
+
+        vec = magnitude * dir
+
+        self.player_head = self.player_head.addVec(vec)
+
+
+
+
+
+    
+    
 
 
     
@@ -354,26 +424,39 @@ mesh_cube =[Vec3D(1,1+4,1)    ,Vec3D(1,1+4,-1),
 
 i = 0
 step = 0.1
+rot = 0.001
 while(True):
-    upArr = win32api.GetKeyState(0x26)
+    upArr   = win32api.GetKeyState(0x26)
     downArr = win32api.GetKeyState(0x28)
     righArr = win32api.GetKeyState(0x27)
     leftArr = win32api.GetKeyState(0x25)
     w  = win32api.GetKeyState (0x57)
     s  = win32api.GetKeyState (0x53)
+    a  = win32api.GetKeyState(0x41)
+    d  = win32api.GetKeyState(0x44)
+
+
     if (upArr!=0 and upArr!= 1):
-        cam.incrementY(step)
+        cam.forward(step)
     if(downArr !=0 and downArr != 1 ):
-        cam.incrementY(-step)
+        cam.backward(step)
     if(righArr !=0 and righArr != 1 ):
         cam.incrementX(step)
+        
     if(leftArr !=0 and leftArr != 1 ):
         cam.incrementX(-step)
     if(w !=0 and  w != 1 ):
         cam.incrementZ(step)
     if(s !=0 and  s != 1 ):
-        cam.incrementZ(-step)   
+        cam.incrementZ(-step)  
 
+    if (a != 0 and a != 1):
+        cam.rotateZ_(-rot)
+
+    if (d != 0 and d != 1):
+        cam.rotateZ_(rot)
+
+    """
     ang = 0.00005 
     for vec in lst_vs:
 
@@ -383,12 +466,16 @@ while(True):
         #vec.rotateZ_(i*0.0005+0.01)
         vec.rotateY_(ang)
     i += 1 
+
+    """
     ##cam.draw(mesh_cube,win)
     ##lst_tris = [tri1,tri2,tri3, tri4,tri5,tri6,tri7,tri8,tri9,tri10,tri11,tri12]
     ##cam.draw_tris(lst_tris,win)
     cam.drawMesh(cube)
 
     update(30)
+
+
 
     cam.undrawMesh(cube)
 print("DONE!!!!!!!!!!!!!!!!!!!")
