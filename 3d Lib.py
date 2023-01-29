@@ -235,34 +235,46 @@ class Camera:
         proj_x =  0 
 
         proj_y = 0 
-        
-        q = l.subVec(self.player_head)
 
+
+        l = l.subVec(self.mid_poi)
+        
+        p = self.player_head.subVec(self.mid_poi)
+
+        q = l.subVec(p)
+        
+        Q = self.player_head.subVec(self.mid_poi)
 
         dotProdqn = norm_vec.dotProd(q) 
+        dotProdpn = norm_vec.dotProd(p)
+
+
         dotProdnn = norm_vec.dotProd(norm_vec) 
 
-        if(dotProdqn != dotProdnn):
+        
             
-            s =  -(abs(dotProdnn)**2/ (dotProdqn - abs(dotProdnn)**2))
-            pass
-        else:
-            #print("EXception")
-            if(s > 1):
-                print("S:",s,end='r')
+        #s =  -(abs(dotProdnn)**2/ (dotProdqn - abs(dotProdnn)**2))
+        s =  -(dotProdpn)/(dotProdqn)
+            
+        
 
           
 
 
-        dotProdqb_1 =q.dotProd(self.b1) 
-        dotProdqb_2 = q.dotProd(self.b2)
+        dotProdqb_1 =(s*q).dotProd(self.b1) 
+        dotProdqb_2 = (s*q).dotProd(self.b2)
 
         dotProdbb_1 = self.b1.dotProd(b1)
         dotProdbb_2 = self.b2.dotProd(b2)
 
-        proj_x = s*(dotProdqb_1)/  dotProdbb_1        
 
-        proj_y = s*(dotProdqb_2)/(dotProdbb_2)   
+        proj_vec_b1 = (s * q).dotProd(self.b1)
+        proj_vec_b2 = ((s * q)).dotProd(self.b2)
+
+        # proj_x = s*(dotProdqb_1)/  dotProdbb_1   
+        proj_x =    p.addVec( s * q).dotProd(self.b1)     
+
+        proj_y =     p.addVec( s * q).dotProd(self.b2)
 
         print("S: ",s,end='\r') 
         print(self.player_head)
@@ -278,22 +290,19 @@ class Camera:
             return Point(proj_x  , proj_y)
     def incrementY (self, incr):
         self.mid_poi.add_y(incr)
-        self.player_head = self.mid_poi.addVec(self.norm_vec) 
-
+        self.player_head.add_y(incr)
     def incrementX (self,incr):
+
+        Q  = self.player_head.subVec(self.mid_poi)
         self.mid_poi.add_x(incr)
-        self.player_head = self.mid_poi.addVec(self.norm_vec) 
+        self.player_head.add_x(incr)
 
     def incrementZ(self, incr):
+
+
         self.mid_poi.add_z(incr)
-        self.player_head = self.mid_poi.addVec(self.norm_vec) 
+        self.player_head.add_z(incr) 
 
-    def rotate(angle):
-
-        #TODO implement rotating
-
-
-        return
 
     def drawMesh (self,mesh: Mesh ):
         self.draw_tris(mesh.lst3d_tris)
@@ -315,7 +324,10 @@ class Camera:
 
         self.norm_vec.rotateZ_(angle)
 
-        self.player_head = self.mid_poi.addVec(self.norm_vec) 
+
+
+
+        self.mid_poi = self.player_head.subVec(self.norm_vec) 
 
         self.b1.rotateZ_(angle)
         self.b2.rotateZ_(angle)
@@ -329,6 +341,7 @@ class Camera:
 
         self.player_head = self.mid_poi.addVec(self.norm_vec) 
 
+
         self.b1.rotateY_(angle)
         self.b2.rotateY_(angle)
 
@@ -339,7 +352,7 @@ class Camera:
         
         self.norm_vec.rotateX_(angle)
 
-        self.player_head = self.mid_poi.addVec(self.norm_vec) 
+        self.mid_poi = self.mid_poi.subVec(self.norm_vec) 
 
         self.b1.rotateX_(angle)
         self.b2.rotateX_(angle)
@@ -352,7 +365,11 @@ class Camera:
 
         vec = magnitude * dir
 
+        vec_x = vec.x
+        vec_y = vec.y
+        vec_z = vec.z
         self.player_head = self.player_head.addVec(vec)
+        self.mid_poi = self.player_head.subVec(self.norm_vec)
 
 
     def backward (self,magnitude):
@@ -360,6 +377,8 @@ class Camera:
         
 
         vec = magnitude * dir
+
+        self.mid_poi = self.mid_poi.addVec(vec)
 
         self.player_head = self.player_head.addVec(vec)
 
@@ -451,10 +470,10 @@ while(True):
         cam.incrementZ(-step)  
 
     if (a != 0 and a != 1):
-        cam.rotateZ_(-rot)
+        cam.rotateZ_(rot)
 
     if (d != 0 and d != 1):
-        cam.rotateZ_(rot)
+        cam.rotateZ_(-rot)
 
     """
     ang = 0.00005 
@@ -465,9 +484,9 @@ while(True):
 
         #vec.rotateZ_(i*0.0005+0.01)
         vec.rotateY_(ang)
-    i += 1 
 
     """
+
     ##cam.draw(mesh_cube,win)
     ##lst_tris = [tri1,tri2,tri3, tri4,tri5,tri6,tri7,tri8,tri9,tri10,tri11,tri12]
     ##cam.draw_tris(lst_tris,win)
