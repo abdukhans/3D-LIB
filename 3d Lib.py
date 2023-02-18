@@ -143,7 +143,7 @@ class Mesh:
 
 
 class Camera:
-    def __init__(self, mid_vec:Vec3D, norm_vec, b1:Vec3D, b2:Vec3D, window: GraphWin, height=1 , width=1 ):
+    def __init__(self, player_head: Vec3D ,mid_vec:Vec3D, norm_vec, b1:Vec3D, b2:Vec3D,  window: GraphWin, height=1 , width=1 ):
 
         self.mid_poi = mid_vec
         self.norm_vec = norm_vec        
@@ -153,7 +153,7 @@ class Camera:
         self.height = height
         self.wdith = width
 
-        self.player_head = mid_vec.addVec(norm_vec)
+        self.player_head = player_head
 
 
         # Basis vectors
@@ -215,11 +215,6 @@ class Camera:
         tri3D.l2.draw(window)
         tri3D.l3.draw(window)   
 
-
-
-        
-        
-
     def draw(self, lst_vec3d):
 
         for i in lst_vec3d:
@@ -232,70 +227,59 @@ class Camera:
 
     def calc(self, l:Vec3D):
 
-        proj_x =  0 
-
+        proj_x = 0 
         proj_y = 0 
 
 
-        l = l.subVec(self.mid_poi)
-        
+        t = l.subVec(self.mid_poi)
         p = self.player_head.subVec(self.mid_poi)
-
-        q = l.subVec(p)
+        q = t.subVec(p)
         
-        Q = self.player_head.subVec(self.mid_poi)
 
         dotProdqn = norm_vec.dotProd(q) 
         dotProdpn = norm_vec.dotProd(p)
 
-
-        dotProdnn = norm_vec.dotProd(norm_vec) 
-
         
             
         #s =  -(abs(dotProdnn)**2/ (dotProdqn - abs(dotProdnn)**2))
-        s =  -(dotProdpn)/(dotProdqn)
+        
+        if dotProdqn == 0 :
+            s = 1
+        else:
+            s =  -(dotProdpn)/(dotProdqn)
+        
             
         
 
           
 
-
-        dotProdqb_1 =(s*q).dotProd(self.b1) 
-        dotProdqb_2 = (s*q).dotProd(self.b2)
-
         dotProdbb_1 = self.b1.dotProd(b1)
         dotProdbb_2 = self.b2.dotProd(b2)
 
 
-        proj_vec_b1 = (s * q).dotProd(self.b1)
-        proj_vec_b2 = ((s * q)).dotProd(self.b2)
 
         # proj_x = s*(dotProdqb_1)/  dotProdbb_1   
-        proj_x =    p.addVec( s * q).dotProd(self.b1)     
-
-        proj_y =     p.addVec( s * q).dotProd(self.b2)
+        proj_x =    (p.addVec( s * q).dotProd(self.b1))
+        proj_y =    (p.addVec( s * q).dotProd(self.b2))
 
         print("S: ",s,end='\r') 
+
         print(self.player_head)
-        if(0<= s <= 1):
-            
-            #print(Point(proj_x , proj_y))
-            
-            return Point(proj_x , proj_y)
-        else: 
-
-         
-
-            return Point(proj_x  , proj_y)
+        return Point(proj_x  , proj_y)
+    
     def incrementY (self, incr):
         self.mid_poi.add_y(incr)
         self.player_head.add_y(incr)
+    
     def incrementX (self,incr):
 
         Q  = self.player_head.subVec(self.mid_poi)
         self.mid_poi.add_x(incr)
+
+        self.printPlayer()
         self.player_head.add_x(incr)
+
+        
 
     def incrementZ(self, incr):
 
@@ -325,9 +309,14 @@ class Camera:
         self.norm_vec.rotateZ_(angle)
 
 
+        Q = self.mid_poi.subVec(self.player_head)
+
+        Q.rotateZ_(angle)
+
+        self.mid_poi = self.player_head.addVec(Q) 
 
 
-        self.mid_poi = self.player_head.subVec(self.norm_vec) 
+
 
         self.b1.rotateZ_(angle)
         self.b2.rotateZ_(angle)
@@ -364,12 +353,8 @@ class Camera:
         
 
         vec = magnitude * dir
-
-        vec_x = vec.x
-        vec_y = vec.y
-        vec_z = vec.z
         self.player_head = self.player_head.addVec(vec)
-        self.mid_poi = self.player_head.subVec(self.norm_vec)
+        self.mid_poi = self.mid_poi.addVec(vec)
 
 
     def backward (self,magnitude):
@@ -382,31 +367,23 @@ class Camera:
 
         self.player_head = self.player_head.addVec(vec)
 
-
-
-
-
-    
-    
-
-
-    
-
-
-
-
-
 win = GraphWin("Lib", 1000 ,1000,autoflush=False)
 win.setBackground("white")
 win.setCoords(-3,-3,3,3)
 
 
+
+
     
-mid_poi  = Vec3D(0,-3,0)
+    
+near = 3
+m_z = -3
+mid_poi  = Vec3D(0,m_z,0)
+player   = Vec3D(0,m_z - near,0)
 norm_vec = Vec3D(0,-1,0)
 b1       = Vec3D (1,0,0)
 b2       = Vec3D (0,0,1)
-cam      = Camera(mid_poi, norm_vec,b1,b2,win)
+cam      = Camera( player, mid_poi, norm_vec,b1,b2,win)
 v1       = Vec3D(1,1,1) 
 v2       = Vec3D(1,1,-1)
 v3       = Vec3D(1,-1,-1)
@@ -421,7 +398,7 @@ tri2     = Tris3D(v3,v4,v1)
 tri3     = Tris3D(v8,v7,v5)
 tri4     = Tris3D(v8,v5,v6)
 tri5     = Tris3D(v8,v3,v4)
-tri6     = Tris3D(v7,v8,v4)
+tri6     = Tris3D(v7,v8,v4)    
 tri7     = Tris3D(v8,v3,v2)
 tri8     = Tris3D(v8,v2,v6)
 tri9     = Tris3D(v7,v4,v5)
@@ -492,6 +469,8 @@ while(True):
     ##cam.draw_tris(lst_tris,win)
     cam.drawMesh(cube)
 
+    cam.printPlayer()
+
     update(30)
 
 
@@ -499,5 +478,4 @@ while(True):
     cam.undrawMesh(cube)
 print("DONE!!!!!!!!!!!!!!!!!!!")
 win.getMouse()
-win.close()
-
+win.close
