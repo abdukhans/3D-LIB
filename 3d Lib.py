@@ -94,10 +94,13 @@ class Vec3D:
         self.add_x(transVec.x)
         self.add_x(transVec.y)
         self.add_x(transVec.z)
-
-
-
         pass
+
+    def crossProd (self, other):    
+
+        
+        return Vec3D(self.y*other.z - self.z*other.y , - (self.x*other.z - self.z*other.x), self.x*other.y - self.y*other.x)
+
 
 
 
@@ -105,16 +108,20 @@ class Vec3D:
 
 
 class Tris3D:
-    def __init__(self, p1:Vec3D,p2:Vec3D, p3:Vec3D):
+    def __init__(self, p1:Vec3D,p2:Vec3D, p3:Vec3D,col="white"):
         self.p1 = p1
         self.p2 = p2 
         self.p3 = p3
+
+
+        self.col = col
 
        
     def getPoints(self) :
         return [self.p1,self.p2,self.p3]
 
-    
+    def setCol (self, color):
+        self.col = color
 
     """
     def drawTri(self,window: GraphWin):
@@ -176,11 +183,11 @@ class Camera:
         self.mid_poi.printVec()
 
 
-    def draw_tris (self,lst_tri3D):
+    def draw_tris (self,lst_tri3D, wireFrame= True, lighting=True):
         for tri in lst_tri3D:
             lst_tri = self.clip(tri)
             for v in  lst_tri:
-                self.draw_tri(v)
+                self.draw_tri(v,wireFrame)
 
     def unDrawTris(self,lst_tri3D):
         for tri in lst_tri3D:
@@ -191,13 +198,10 @@ class Camera:
 
     def unDrawTri(self,tri3D:Tris3D):
         
-        tri3D.l1.undraw()
-        tri3D.l2.undraw()
-        tri3D.l3.undraw()
-
+        tri3D.poly.undraw()
 
         pass
-    def draw_tri (self, tri3D ):
+    def draw_tri (self, tri3D:Tris3D, wireFrame=True ):
         lst_points = []
         for vec in tri3D.getPoints():
             lst_points.append(self.calc(vec))
@@ -206,14 +210,28 @@ class Camera:
         p2 = lst_points[1]
         p3 = lst_points[2]
 
+
+
+        """
         tri3D.l1 = Line(p1,p2)
         tri3D.l2 = Line (p2,p3)
         tri3D.l3 = Line(p3,p1)
 
+        tri3D.l1.setFill("white")
+        tri3D.l2.setFill("white")
+        tri3D.l3.setFill("white")
+        """
+
+        tri3D.poly = Polygon(p1, p2, p3,p1)
+
+        if wireFrame:
+            tri3D.poly.setOutline(tri3D.col)
+
+
+
         window = self.window
-        tri3D.l1.draw(window)
-        tri3D.l2.draw(window)
-        tri3D.l3.draw(window)   
+        tri3D.poly.draw(window)
+        
 
     def draw(self, lst_vec3d):
 
@@ -288,8 +306,8 @@ class Camera:
         self.player_head.add_z(incr) 
 
 
-    def drawMesh (self,mesh: Mesh ):
-        self.draw_tris(mesh.lst3d_tris)
+    def drawMesh (self,mesh: Mesh, wireFrame=True ):
+        self.draw_tris(mesh.lst3d_tris,wireFrame)
 
     def undrawMesh (self,mesh:Mesh):
 
@@ -368,7 +386,7 @@ class Camera:
         self.player_head = self.player_head.addVec(vec)
 
 win = GraphWin("Lib", 1000 ,1000,autoflush=False)
-win.setBackground("white")
+win.setBackground("black")
 win.setCoords(-3,-3,3,3)
 
 
@@ -405,8 +423,8 @@ tri9     = Tris3D(v7,v4,v5)
 tri10    = Tris3D(v5,v4,v1)
 tri11    = Tris3D(v1,v2,v6)
 tri12    = Tris3D(v6,v1,v5)
-tri13    = Tris3D(v8,v7,v1)
-lst_tris = [tri1,tri2,tri3, tri4,tri5,tri6,tri7,tri8,tri9,tri10,tri11,tri12,tri13]
+tri13    = Tris3D(v8,v7,v1,col="red")
+lst_tris = [tri1,tri2,tri3, tri4,tri5,tri6,tri7,tri8,tri9,tri10,tri11,tri12]
 cube     = Mesh(lst_tris)
 
 """
