@@ -23,6 +23,11 @@ class Vec3D:
             print(string)
         else:
             print(string,end='\r')
+    def set_coords(self,x,y,z):
+        self.x = x
+        self.y = y 
+
+        self.z = z 
 
 
     def addVec (self, other):
@@ -33,9 +38,8 @@ class Vec3D:
 
     def distance (self, other):
         return m.sqrt( (self.x - other.x)**2 + (self.y- other.y)**2 + (self.z - other.z)**2     )
+    
 
-    def __str__(self) -> str:
-        return "VEC 3D:  (" + str(self.x) +"," + str(self.y)+"," + str(self.z) + ")"
 
     def magnitude (self):
         return self.distance(Vec3D(0,0,0))
@@ -97,9 +101,12 @@ class Vec3D:
         self.x+= x
 
     def transVec (self,transVec):
+        #print("BEFORE: " , self)
         self.add_x(transVec.x)
-        self.add_x(transVec.y)
-        self.add_x(transVec.z)
+        self.add_y(transVec.y)
+        self.add_z(transVec.z)
+        #print("AFTER : " , self)
+
         pass
 
     def crossProd (self, other):           
@@ -108,6 +115,8 @@ class Vec3D:
     def normalizeVec(self):
         return (1/self.magnitude())*self
 
+    def __str__(self):
+        return ("VEC 3D: "+ "( " + str(self.x) +" , " + str(self.y) +" , "+ str(self.z) + " )" )
     
 
 
@@ -147,7 +156,7 @@ class Tris3D:
         self.p2.rotateZ_(ang)
         self.p3.rotateZ_(ang)
 
-        self.norm = (self.p1 - self.p2).crossProd(self.p2 - self.p3).normalizeVec()
+        #self.norm = (self.p1 - self.p2).crossProd(self.p2 - self.p3).normalizeVec()
 
         return
     def rotateY_ (self,ang):
@@ -155,7 +164,7 @@ class Tris3D:
         self.p2.rotateY_(ang)
         self.p3.rotateY_(ang)
 
-        self.norm = self.p1.crossProd(self.p2).normalizeVec()
+        #self.norm = self.p1.crossProd(self.p2).normalizeVec()
 
         return
 
@@ -165,24 +174,90 @@ class Tris3D:
         self.p3.rotateX_(ang)
 
 
-        self.norm = self.p1.crossProd(self.p2).normalizeVec()
+        #self.norm = self.p1.crossProd(self.p2).normalizeVec()
+
         return
 
     def updateNorm(self):
-        
         self.norm = (self.p1 - self.p2).crossProd(self.p2 - self.p3).normalizeVec()
 
+    def scale(self,factor):
+
+        self.p1 = factor*self.p1
+        self.p3 = factor*self.p2
+        self.p3 = factor*self.p3
+        self.norm = factor*self.norm
+
+    def move(self, trans_vec):
+
+        self.p1.transVec(trans_vec)
+        self.p2.transVec(trans_vec)
+        self.p3.transVec(trans_vec)
+
+    def __str__(self):
+
+        return (str(self.p1) +"\n" + str(self.p2) + "\n" + str(self.p3))
+
 class Mesh:
-    def __init__(self, lst3d_tris):
+    def __init__(self, lst3d_tris:list[Tris3D]):
         self.lst3d_tris = lst3d_tris
-    
-    def move(self,trans_vec):
-        pass            
+
+        self.lst_vs:set = set()
+        for i in self.lst3d_tris:
+            """if i.p1 not in self.lst3d_tris:
+                self.lst_vs.add(i.p1)
+            if i.p2 not in self.lst3d_tris:
+                self.lst_vs.add(i.p2)
+            if i.p3 not in self.lst3d_tris:
+                self.lst_vs.add(i.p3)"""
+
+            self.lst_vs.add(i.p1)
+            self.lst_vs.add(i.p2)
+            self.lst_vs.add(i.p3)
+        """for i in (self.lst_vs):
+            print(i)"""
+
+
+        #print(len(self.lst_vs))
+    def move(self,trans_vec:Vec3D):
+        for i in self.lst_vs:
+            i.transVec(trans_vec)
+
+    def rotateX_(self,degrees):
+        for i in self.lst_vs:
+            i.rotateX_(degrees)
+        self.updateNorms()
+
+    def rotateY_(self,degrees):
+        for i in self.lst_vs:
+            i.rotateY_(degrees)
+        self.updateNorms()
+
+
+    def rotateZ_(self,degrees):
+        for i in self.lst_vs:
+            i.rotateZ_(degrees)
+        self.updateNorms()
+
 
     def updateNorms(self):
         for tris in self.lst3d_tris:
             tris.updateNorm()
 
+    def scale (self, factor):
+        new_lst = set()
+        for v in self.lst_vs:
+            nv:Vec3D = v*(factor)
+            v.set_coords(nv.x,nv.y,nv.z)
+    
+
+    def __mul__(self,factor):
+        new_mesh = Mesh (self.lst3d_tris)
+        return new_mesh.scale(factor)
+
+    def __rmul__(self,factor):
+        return self.__mul__(factor)
+        
 
 """        
     def draw (self, window: GraphWin):
@@ -196,22 +271,44 @@ class Mesh:
 
 
 class Camera:
-    def __init__(self, player_head: Vec3D ,mid_vec:Vec3D, norm_vec, b1:Vec3D, b2:Vec3D,  window: GraphWin, height=1 , width=1 ):
+    def __init__(self, player_head: Vec3D, norm_vec, b1:Vec3D, b2:Vec3D,  window: GraphWin, 
+                near=1, far=10,fov=90):
+        self.player_head = player_head
 
-        self.mid_poi = mid_vec
+        self.zaw   = 0 
+        self.pitch = 0 
+        self.tan_fov = 1/m.tan(m.radians(fov/2))
+        self.q       = far/(far- near)  
+        self.near    = near
+
+        self.a = Vec3D(1,0,0)
+        self.b = Vec3D(0,1,0)
+        self.c = Vec3D(0,0,1)
+
+
+        self.scale = near
+
+
+        self.mid_poi = self.player_head + near*self.player_head.normalizeVec() 
+        print(near*self.player_head.normalizeVec())
+        self.drawn_tri = []
         self.norm_vec = norm_vec        
 
         self.window = window
 
-        self.height = height
-        self.wdith = width
+        print(window.getWidth())
 
-        self.player_head = player_head
+        self.height = window.getHeight()
+        self.wdith = window.getWidth()
+
+
+    
+        
 
 
         # Basis vectors
         self.b1 = b1
-        self.b2 = b2 
+        self.b2 = b2
 
 
     def printPlayer(self, update=False):
@@ -230,26 +327,45 @@ class Camera:
 
 
     def draw_tris (self,lst_tri3D, wireFrame= True, lighting=True):
-        for tri in lst_tri3D:
-            lst_tri = self.clip(tri)
-            for v in  lst_tri:
-                if v.norm.dotProd(self.player_head.subVec(v.midPoi())) > 0 :
-                    self.draw_tri(v,wireFrame)
+        l_d = []
 
-    def unDrawTris(self,lst_tri3D):
         for tri in lst_tri3D:
-            lst_tri = self.clip(tri)
-            for v in  lst_tri:
-                if v.norm.dotProd(self.player_head.subVec(v.midPoi())) > 0 :
-                    self.unDrawTri(v)
+            dot  = tri.norm.dotProd(self.player_head.subVec(tri.midPoi()).normalizeVec())
+            if dot > 0 and lighting :
+
+
+
+                light  = -tri.norm.dotProd(self.player_head.subVec(self.mid_poi).normalizeVec())
+
+                if light <= 0:
+                    light = 0.3
+                l_d.append(self.draw_tri(tri, light,wireFrame))
+            elif not (lighting):
+                l_d.append(self.draw_tri(tri,wireFrame,lighting=False))
+
+
+        l_c = []
+
+        for tri in l_d:
+            l_c+= self.clip3D(tri)
+        for tri in l_c:
+            self.drawn_tri.append(tri)
+            tri.poly.draw(self.window)
+
         
+
+    def unDrawTris(self,lighting=True):
+        for tri in self.drawn_tri:
+            tri.poly.undraw()      
+
+        self.drawn_tri = []  
 
     def unDrawTri(self,tri3D:Tris3D):
         
         tri3D.poly.undraw()
 
         pass
-    def draw_tri (self, tri3D:Tris3D, wireFrame=True ):
+    def draw_tri (self, tri3D:Tris3D, light , wireFrame=True,lighting=True ):
         lst_points = []
         for vec in tri3D.getPoints():
             lst_points.append(self.calc(vec))
@@ -277,17 +393,26 @@ class Camera:
         if wireFrame:
             tri3D.poly.setOutline(tri3D.col)
 
+        
+        if lighting:
+            red    = int(light * 255)
+            green  = int(light * 255)
+            blue   = int(light * 255)
+            tri3D.poly.setFill(color_rgb(red,green,blue))
+            if not(wireFrame): 
+                tri3D.poly.setOutline(color_rgb(red,green,blue))
+
 
 
         window = self.window
-        tri3D.poly.draw(window)
+        return tri3D
         
 
     def draw(self, lst_vec3d):
 
         for i in lst_vec3d:
             print(i)
-            porj_point = self.calc(i)
+            porj_point = self.calc(i)[0]
             porj_point.draw(self.window)
 
 
@@ -295,43 +420,67 @@ class Camera:
 
     def calc(self, l:Vec3D):
 
-        proj_x = 0 
-        proj_y = 0 
 
 
-        t = l.subVec(self.mid_poi)
+
+
+
+
+        mat_proj = np.array([
+            [self.tan_fov,            0,                     0,0],
+            [   0        ,self.tan_fov,0                      ,0],
+            [           0,           0,self.q                 ,1],
+            [           0,           0,-self.near* self.q     ,0]
+        ])
+
+
+
+        mat_view =  np.array([
+            [self.a.x                         ,                         self.c.x,                         self.b.x,0],
+            [self.a.z                         ,                         self.c.z,                         self.b.z,0],
+            [self.a.y                         ,                         self.c.y,                         self.b.y,0],
+            [-self.player_head.dotProd(self.a),-self.player_head.dotProd(self.c),-self.player_head.dotProd(self.b),1]
+        ])
+
+        vect =np.array( [l.x,l.z,l.y,1])
+
+        vect_view  = vect.dot(mat_view)
+
+
+        vect_proj =(vect_view).dot(mat_proj)
+
+
+        """t = l.subVec(self.mid_poi)
         p = self.player_head.subVec(self.mid_poi)
-        q = t.subVec(p)
+        q = t.subVec(p)"""
         
 
-        dotProdqn = norm_vec.dotProd(q) 
-        dotProdpn = norm_vec.dotProd(p)
+        """dotProdqn = norm_vec.dotProd(q) 
+        dotProdpn = norm_vec.dotProd(p)"""
 
-        
+    
             
         #s =  -(abs(dotProdnn)**2/ (dotProdqn - abs(dotProdnn)**2))
         
-        if dotProdqn == 0 :
+        """if dotProdqn == 0 :
             s = 1
         else:
             s =  -(dotProdpn)/(dotProdqn)
-        
-            
-        dotProdbb_1 = self.b1.dotProd(b1)
-        dotProdbb_2 = self.b2.dotProd(b2)
+        """
+        #s = self.calcS(l)     
 
 
 
         # proj_x = s*(dotProdqb_1)/  dotProdbb_1   
-        proj_x =    (p.addVec( s * q).dotProd(self.b1))
-        proj_y =    (p.addVec( s * q).dotProd(self.b2))
+        #proj_x =    (p.addVec( s * q).dotProd(self.b1))
+        #proj_y =    (p.addVec( s * q).dotProd(self.b2))
 
         #print("S: ",s,end='\r') 
 
         #print(self.player_head)
 
         
-        return Point(proj_x  , proj_y)
+        return Point(vect_proj[0]/vect_proj[3] , vect_proj[1]/vect_proj[3] )
     
     def incrementY (self, incr):
         self.mid_poi.add_y(incr)
@@ -354,22 +503,127 @@ class Camera:
         self.player_head.add_z(incr) 
 
 
-    def drawMesh (self,mesh: Mesh, wireFrame=True ):
-        self.draw_tris(mesh.lst3d_tris,wireFrame)
+    def drawMesh (self,mesh: Mesh, wireFrame=True,lighting=True ):
+        self.draw_tris(mesh.lst3d_tris,wireFrame,lighting)
 
     def undrawMesh (self,mesh:Mesh):
+        self.unDrawTris()
 
-        self.unDrawTris(mesh.lst3d_tris)
+    def calcS(self, l : Vec3D):
 
-    def clip (self, tri : Tris3D):
+
+        t = l.subVec(self.mid_poi)
+        p = self.player_head.subVec(self.mid_poi)
+        q = t.subVec(p)
+        dotProdqn = norm_vec.dotProd(q) 
+        dotProdpn = norm_vec.dotProd(p)
+
+            
+        #s =  -(abs(dotProdnn)**2/ (dotProdqn - abs(dotProdnn)**2))
+        
+        if dotProdqn == 0 :
+            s = 1
+        else:
+            s =  -(dotProdpn)/(dotProdqn)
+
+        return s 
+
+
+    def TriPolyPoint(self,poly:Polygon):
+
+        return (poly.points[0],poly.points[1],poly.points[2])
+    """ x and y denote the edge we are clipping 
+        against """
+    def clipTriEdge(self,tri:Polygon , x,y):
+
+        poly_points = self.TriPolyPoint(tri)
+        p1_proj = poly_points[0]
+        p2_proj = poly_points[1]
+        p3_proj = poly_points[2]
+
+        proj_list = [p1_proj,p2_proj,p3_proj]
+        if x == -1 :
+            violations =  [ p_proj for p_proj in [p1_proj,p2_proj,p3_proj] if p_proj.x < x ]
+            val_pois   =  [ i for i in proj_list if i not in violations ]
+            if len (violations) == 0: 
+                return [tri]
+            elif len(violations) == 1:
+
+                vp1 = val_pois[0]
+                vp2 = val_pois[1]
+                wp3 = violations[0]
+                t1  = (wp3.getX() - vp1.getX() , wp3.getY() - vp1.getY() )   
+                t2  = (wp3.getX() - vp2.getX() , wp3.getY() - vp2.getY() ) 
+
+
+
+
+
+
+
+                return [tri]
+            elif len(violations) == 3:
+                return []
+        elif x == 1:
+            return [tri]
+        elif y == -1:
+            return [tri]
+        elif y == 1:
+            return [tri]
+
+
+
+
+
+        
+        raise Exception("The edge you are clipping against does not exist.")
+
+
+    def clip3D (self, tri : Tris3D):
 
         #TODO implement clipping
 
-        
-
         return [tri]
 
+        clip_tri_x_neg = []
+        clip_tri_x_neg +=  self.clipTriEdge(tri.poly, -1,0)
+      
+        clip_tri_x_pos = []
+        for tri_ in clip_tri_x_neg:
+            clip_tri_x_pos += self.clipTriEdge(tri_, 1,0 )
+        
+    
+
+        clip_tri_y_neg = []
+        for tri_ in clip_tri_x_pos:
+            clip_tri_y_neg += self.clipTriEdge(tri_, 0,-1 )
+
+
+        clip_tri_y_pos = []
+        for tri_ in clip_tri_y_neg:
+            clip_tri_y_pos += self.clipTriEdge(tri_, 0,1 )
+    
+        return tri
+
+    def clipTris(self, lst_tris):
+
+        clipped = []
+
+        for tri in lst_tris:
+            lst_clip = self.clip(tri)
+
+            for cli_tri in lst_clip:
+                clipped.append(cli_tri)
+
+        return clipped
+
     def rotateZ_(self, angle):
+
+
+
+        self.a.rotateZ_(angle)
+        self.b.rotateZ_(angle)
+        self.c.rotateZ_(angle)
 
 
         self.norm_vec.rotateZ_(angle)
@@ -381,6 +635,7 @@ class Camera:
 
         self.mid_poi = self.player_head.addVec(Q) 
 
+        self.zaw  += angle 
 
 
 
@@ -395,6 +650,7 @@ class Camera:
         self.norm_vec.rotateY_(angle)
 
         self.player_head = self.mid_poi.addVec(self.norm_vec) 
+
 
 
         self.b1.rotateY_(angle)
@@ -443,7 +699,7 @@ class Camera:
         self.player_head = self.player_head.addVec(vec)
 
     def  right (self,magnitude):
-        dir =  self.b1
+        dir =  self.a
         
 
         vec = magnitude * dir
@@ -457,23 +713,28 @@ class Camera:
 
 
 
-win = GraphWin("Lib", 1000 ,1000,autoflush=False)
+height = 500
+width  = 500 
+win    = GraphWin("Lib", height=height ,width= width,autoflush=False)
 win.setBackground("black")
-win.setCoords(-3,-3,3,3)
+win.setCoords(-1,-1,1,1)
 
 
 
-
-    
-    
-near = 3
+"""
+for i in range (500):
+    p = Point(i/(85),1)
+    p.setFill("Red")
+    p.draw(win)
+"""
+near = 1
 m_z = -3
-mid_poi  = Vec3D(0,m_z,0)
-player   = Vec3D(0,m_z - near,0)
+
+p = -3
+player   = Vec3D(0,p,0)
 norm_vec = Vec3D(0,-1,0)
 b1       = Vec3D (1,0,0)
 b2       = Vec3D (0,0,1)
-cam      = Camera( player, mid_poi, norm_vec,b1,b2,win)
 v1       = Vec3D(1,1,1) 
 v2       = Vec3D(1,1,-1)
 v3       = Vec3D(1,-1,-1)
@@ -499,6 +760,11 @@ tri13    = Tris3D(v8,v7,v1,col="red")
 lst_tris = [tri1,tri2,tri3, tri4,tri5,tri6,tri7,tri8,tri9,tri10,tri11,tri12]
 cube     = Mesh(lst_tris)
 
+cube.scale(1)
+#cube.move(Vec3D(0,1,0))
+cam      = Camera(player,norm_vec,b1,b2,win,near=near,fov=90)
+
+
 """
 mesh_cube =[Vec3D(1,1+4,1)    ,Vec3D(1,1+4,-1),
              Vec3D(1,-1+4,-1),  Vec3D(1,-1+4,1),
@@ -506,12 +772,13 @@ mesh_cube =[Vec3D(1,1+4,1)    ,Vec3D(1,1+4,-1),
             Vec3D(-1,-1+4,-1) ,Vec3D(-1,-1+4,1) ]
 """
 
-
 if __name__ == "__main__":
     i = 0
-    step = 0.1
+    step = 0.1/1.2
     rot = 0.001
     while(True):
+
+
         upArr   = win32api.GetKeyState(0x26)
         downArr = win32api.GetKeyState(0x28)
         righArr = win32api.GetKeyState(0x27)
@@ -542,32 +809,44 @@ if __name__ == "__main__":
         if (d != 0 and d != 1):
             cam.rotateZ_(-rot)
 
+        x,y,z = 0,0,0
+        ang = 0.00001
+        i += 0.00000001 
 
-        ang = 0.0001
-        for vec in lst_vs:
+        cube.rotateX_(ang)
+        cube.rotateZ_(ang)
+        cube.rotateY_(ang)
+        
 
-            vec.rotateZ_(ang)
+        
+        """for vec in lst_vs:
+            pass
+            
+            #vec.rotateZ_(ang)
 
             
-            vec.rotateX_(ang)
+            #vec.rotateX_(ang)
 
             #vec.rotateZ_(i*0.0005+0.01)
-            vec.rotateY_(ang)
+            #vec.rotateY_(ang)
 
 
-            cube.updateNorms()
+            #cube.updateNorms()"""
 
         ##cam.draw(mesh_cube,win)
         ##lst_tris = [tri1,tri2,tri3, tri4,tri5,tri6,tri7,tri8,tri9,tri10,tri11,tri12]
         ##cam.draw_tris(lst_tris,win)
-        cam.drawMesh(cube)
+        cube.move(Vec3D(x,y,z))
+        cam.drawMesh(cube,wireFrame=False,lighting=True)
+        cube.move(Vec3D(-x,-y,-z))
 
         #cam.printPlayer()
 
         update(30)
 
+       
 
-
+       
         cam.undrawMesh(cube)
     print("DONE!!!!!!!!!!!!!!!!!!!")
     win.getMouse()
