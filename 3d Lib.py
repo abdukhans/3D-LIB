@@ -677,8 +677,8 @@ class Camera:
 
             """if n_poi1.is_equal(n_poi2):
                 print("EQULAI")"""
-            if n_poi1.z < n_poi2.z:
-                n_poi1,n_poi2 = n_poi2, n_poi1
+            """if n_poi1.z < n_poi2.z:
+                n_poi1,n_poi2 = n_poi2, n_poi1"""
 
 
             """print(n_poi1)
@@ -695,22 +695,26 @@ class Camera:
 
             n_tri2 = Tris3D( n_poi1, n_poi2 ,pg2)
 
-            if not(n_tri1.norm.is_equal(o_norm)):
+            #n_tri1.col = "red"
+            if not(n_tri1.norm.is_equal(o_norm,epsilon=0.01)):
                 """print("NO 1")
                 print(n_tri1.norm) """
             
                 n_tri1 = Tris3D(pg1, n_poi1 ,pg2)
+                #n_tri1.col = "purple"
                 #print(n_tri1.norm)
                 
-
-            if not(n_tri2.norm.is_equal(o_norm)): 
+            #n_tri2.col = "green"
+            if not(n_tri2.norm.is_equal(o_norm,epsilon=0.01)): 
                 #print("NO 2") 
                 n_tri2 = Tris3D(n_poi2, n_poi1 ,pg2)
+                #n_tri2.col = "purple"
             
             #print("O NORM: " , o_norm)
 
                 
-
+            
+            
             return [n_tri1,n_tri2]
         elif len(lst_vios) == 2:
             vio_p1 = lst_vios[0][0]
@@ -719,13 +723,14 @@ class Camera:
             n_poi1 = FindIntersectPoi(Vec3D(0,1,0), plane_p,vio_p1, lst_good[0][0])
             n_poi2 = FindIntersectPoi(Vec3D(0,1,0), plane_p,vio_p2, lst_good[0][0])
 
-            n_tri = Tris3D(n_poi1,n_poi2, lst_good[0][0])
+            n_tri = Tris3D(n_poi1,n_poi2, lst_good [0][0])
 
-            if not(n_tri.norm.is_equal(o_norm)):
+            if not(n_tri.norm.is_equal(o_norm,epsilon=0.01)):
                 n_tri = Tris3D(n_poi2,n_poi1, lst_good[0][0])
 
 
             
+            #n_tri.col = "blue"
             return [n_tri]  
         elif len(lst_vios) == 3:
             return []
@@ -880,8 +885,8 @@ m_z = -3
 p = -4
 player   = Vec3D(0,p,0)
 norm_vec = Vec3D(0,-1,0)
-b1       = Vec3D (1,0,0)
-b2       = Vec3D (0,0,1)
+b1       = Vec3D(1,0,0)
+b2       = Vec3D(0,0,1)
 v1       = Vec3D(1,1,1) 
 v2       = Vec3D(1,1,-1)
 v3       = Vec3D(1,-1,-1)
@@ -909,7 +914,9 @@ lst_tris = [tri1,tri2,tri3, tri4,tri5,tri6,tri7,tri8,tri9,tri10,tri11,tri12]
 cube     = Mesh(lst_tris)
 
 
+
 cube.move(Vec3D(0,0,0))
+#cube.rotateY_(0.005969999999999925)
 cam      = Camera(player,norm_vec,b1,b2,win,near=1,fov=90)
 
 
@@ -922,7 +929,7 @@ mesh_cube =[Vec3D(1,1+4,1)    ,Vec3D(1,1+4,-1),
 
 if __name__ == "__main__":
     i = 0
-    step = 0.1/4
+    step = 0.1/1.3
     rot = 0.001
     
     print(Vec3D(-1,-1,1).SDistFromPlane(Vec3D(0,1,0),Vec3D(0,-3,0)))
@@ -957,15 +964,15 @@ if __name__ == "__main__":
         if (d != 0 and d != 1):
             cam.rotateZ_(-rot)
 
-        x,y,z = 0,0,0
-        ang = 0.0000
-        i += 0.0000000
+        x,y,z = -1,1,3
+        ang = 0.0001
+        i += ang
 
         cube.rotateX_(0*ang)
         cube.rotateZ_(0*ang)
         cube.rotateY_(ang)
         
-
+       
         
         """for vec in lst_vs:
             pass
@@ -985,7 +992,7 @@ if __name__ == "__main__":
         ##lst_tris = [tri1,tri2,tri3, tri4,tri5,tri6,tri7,tri8,tri9,tri10,tri11,tri12]
         ##cam.draw_tris(lst_tris,win)
         cube.move(Vec3D(x,y,z))
-        cam.drawMesh(cube,wireFrame=True,lighting=True)
+        cam.drawMesh(cube,wireFrame=False,lighting=True)
         cube.move(Vec3D(-x,-y,-z))
 
         #cam.printPlayer()
