@@ -12,6 +12,8 @@ class Vec3D:
         self.y = y
         self.z = z
 
+        self.w = 1
+
         self.mem_x = x
         self.mem_y = y 
         self.mem_z = z
@@ -109,6 +111,14 @@ class Vec3D:
 
         pass
 
+    """
+        This returns the signed distance from a plan defined by
+        a normal as well as a point on the plane
+    """
+    def SDistFromPlane(self,plane_n , point_plane):
+        plane_norm = plane_n.normalizeVec()
+        return (self.dotProd(plane_norm) -  point_plane.dotProd(plane_norm))
+
     def crossProd (self, other):           
         return Vec3D(self.y*other.z - self.z*other.y , - (self.x*other.z - self.z*other.x), self.x*other.y - self.y*other.x)
 
@@ -117,10 +127,23 @@ class Vec3D:
 
     def __str__(self):
         return ("VEC 3D: "+ "( " + str(self.x) +" , " + str(self.y) +" , "+ str(self.z) + " )" )
+
+    def is_equal(self, other: object , epsilon = 0.00001) -> bool:
+        return abs(self.x - other.x) < epsilon and abs( self.y - other.y) < epsilon and abs(self.z - other.z) < epsilon
     
 
 
+def FindIntersectPoi(plane_n:Vec3D, plane_p:Vec3D,line_start:Vec3D, line_end:Vec3D):
 
+    plane_n = plane_n.normalizeVec()
+    plane_d = -plane_n.dotProd(plane_p)
+    ad      = line_start.dotProd(plane_n)
+    bd      = line_end.dotProd(plane_n)
+    t = (-plane_d - ad) / (bd - ad)
+    
+    lineStartToEnd = line_end.subVec(line_start)
+    lineToIntersect = t*lineStartToEnd
+    return line_start.addVec(lineToIntersect)
 
 
 
@@ -289,8 +312,9 @@ class Camera:
         self.scale = near
 
 
-        self.mid_poi = self.player_head + near*self.player_head.normalizeVec() 
-        print(near*self.player_head.normalizeVec())
+        self.mid_poi = self.player_head + Vec3D(0,near,0)
+        print("MID POI: ", self.mid_poi)
+        print("Player head: ", self.player_head)
         self.drawn_tri = []
         self.norm_vec = norm_vec        
 
@@ -328,27 +352,32 @@ class Camera:
 
     def draw_tris (self,lst_tri3D, wireFrame= True, lighting=True):
         l_d = []
+        l_c:list[Tris3D] = []
+
+        l_v  = []
 
         for tri in lst_tri3D:
-            dot  = tri.norm.dotProd(self.player_head.subVec(tri.midPoi()).normalizeVec())
-            if dot > 0 and lighting :
+            l_v.append(self.viewTri(tri))
 
+        for tri in l_v:
+            l_c+= self.clip3D(tri)
 
-
-                light  = -tri.norm.dotProd(self.player_head.subVec(self.mid_poi).normalizeVec())
-
+        for tri in l_c:
+            dot  = tri.norm.dotProd((Vec3D(0,0,0).subVec(tri.midPoi())).normalizeVec())
+            #print("NORM: " ,tri.norm," VEC: ",tri.midPoi())
+            #dot  = tri.norm.dotProd(self.player_head.subVec(self.mid_poi).normalizeVec())
+            if dot >= 0 and lighting :
+                light  = tri.norm.dotProd(Vec3D(0,0,0).subVec(Vec3D(0,1,0)).normalizeVec())
                 if light <= 0:
-                    light = 0.3
+                    light = 0.1
+
                 l_d.append(self.draw_tri(tri, light,wireFrame))
             elif not (lighting):
                 l_d.append(self.draw_tri(tri,wireFrame,lighting=False))
 
 
-        l_c = []
-
+      
         for tri in l_d:
-            l_c+= self.clip3D(tri)
-        for tri in l_c:
             self.drawn_tri.append(tri)
             tri.poly.draw(self.window)
 
@@ -418,11 +447,31 @@ class Camera:
 
         return
 
+
+    def view(self,l:Vec3D):
+        mat_view =  np.array([
+            [self.a.x                         ,                         self.c.x,                         self.b.x,0],
+            [self.a.z                         ,                         self.c.z,                         self.b.z,0],
+            [self.a.y                         ,                         self.c.y,                         self.b.y,0],
+            [-self.player_head.dotProd(self.a),-self.player_head.dotProd(self.c),-self.player_head.dotProd(self.b),1]
+        ])
+
+        vect =np.array( [l.x,l.z,l.y,1])
+
+        vect_view = vect.dot(mat_view)
+
+        #print(vect_view)
+        return Vec3D(vect_view[0],vect_view[2],vect_view[1])
+
+    def viewTri(self,tri:Tris3D):
+        view_tri =  Tris3D(self.view(tri.p1),self.view(tri.p2),self.view(tri.p3))
+        """print("ORIGINAL NORM: ", tri.norm)
+        print("VIEW NORM    : ", view_tri.norm) 
+        print("____________")"""
+        return view_tri
+
+
     def calc(self, l:Vec3D):
-
-
-
-
 
 
 
@@ -435,21 +484,23 @@ class Camera:
 
 
 
-        mat_view =  np.array([
+        """mat_view =  np.array([
             [self.a.x                         ,                         self.c.x,                         self.b.x,0],
             [self.a.z                         ,                         self.c.z,                         self.b.z,0],
             [self.a.y                         ,                         self.c.y,                         self.b.y,0],
             [-self.player_head.dotProd(self.a),-self.player_head.dotProd(self.c),-self.player_head.dotProd(self.b),1]
         ])
 
+        
+
+        vect_view  = vect.dot(mat_view)"""
+
         vect =np.array( [l.x,l.z,l.y,1])
+        vect_proj =(vect).dot(mat_proj)
 
-        vect_view  = vect.dot(mat_view)
+        l.w = vect_proj[2]/abs(vect_proj[3])
 
-
-        vect_proj =(vect_view).dot(mat_proj)
-
-
+    
         """t = l.subVec(self.mid_poi)
         p = self.player_head.subVec(self.mid_poi)
         q = t.subVec(p)"""
@@ -479,7 +530,7 @@ class Camera:
 
         #print(self.player_head)
 
-        
+        #print("y:" ,vect_proj[3])
         return Point(vect_proj[0]/vect_proj[3] , vect_proj[1]/vect_proj[3] )
     
     def incrementY (self, incr):
@@ -582,7 +633,104 @@ class Camera:
     def clip3D (self, tri : Tris3D):
 
         #TODO implement clipping
+        """tri.updateNorm()
+        return [tri]
+        """
 
+        #clip against the near plane
+        o_norm            = tri.norm
+        lst_p:list[Vec3D] =  [(tri.p1,0) ,(tri.p2,1),(tri.p3,2)] 
+
+        plane_p = Vec3D(0,self.near,0)
+        #lst_dist = [  i.SDistFromPlane(Vec3D(0,1,0), plane_p) for i in lst_p ]
+        lst_vios = []
+        lst_good = []
+
+        for p in lst_p: 
+            """print("_______________________")
+            print("p       : ", p)
+            print("self.b  : ", self.b)
+            print("plane_p : ",plane_p)
+            print("sd      : ",p.SDistFromPlane(self.b,plane_p) )
+            print("_______________________")"""
+            if p[0].SDistFromPlane(Vec3D(0,1,0),plane_p) < 0 :
+                lst_vios.append(p)
+            else:
+                lst_good.append(p)
+
+        if len(lst_vios) == 1:
+            vio_p = lst_vios[0][0]
+            idx = lst_vios[0][1]
+            """print(vio_p)
+            print("VIO 1")"""
+
+            pg1  = lst_good[0][0]
+            pg2  = lst_good[1][0]
+
+            pg1_idx = lst_good[0][1]
+            pg2_idx = lst_good[1][1]
+            if pg1.z < pg2.z:
+                pg1,pg2 = pg2,pg1
+                pg1_idx,pg2_idx= pg2_idx,pg1_idx
+            n_poi1 = FindIntersectPoi(Vec3D(0,1,0), plane_p,vio_p, pg1)
+            n_poi2 = FindIntersectPoi(Vec3D(0,1,0), plane_p,vio_p, pg2)
+
+            """if n_poi1.is_equal(n_poi2):
+                print("EQULAI")"""
+            if n_poi1.z < n_poi2.z:
+                n_poi1,n_poi2 = n_poi2, n_poi1
+
+
+            """print(n_poi1)
+            print(n_poi2)
+            print("_____")    """
+
+            n1 = [(n_poi1,idx),(pg1,pg1_idx), (pg2,pg2_idx)]
+            n1.sort(key=lambda x: x[1])
+
+            n2 = [(n_poi1,idx),(n_poi2,idx), (pg2,pg2_idx)]
+            n2.sort(key=lambda x: x[1])
+
+            n_tri1 = Tris3D(n_poi1, pg1 ,pg2)
+
+            n_tri2 = Tris3D( n_poi1, n_poi2 ,pg2)
+
+            if not(n_tri1.norm.is_equal(o_norm)):
+                """print("NO 1")
+                print(n_tri1.norm) """
+            
+                n_tri1 = Tris3D(pg1, n_poi1 ,pg2)
+                #print(n_tri1.norm)
+                
+
+            if not(n_tri2.norm.is_equal(o_norm)): 
+                #print("NO 2") 
+                n_tri2 = Tris3D(n_poi2, n_poi1 ,pg2)
+            
+            #print("O NORM: " , o_norm)
+
+                
+
+            return [n_tri1,n_tri2]
+        elif len(lst_vios) == 2:
+            vio_p1 = lst_vios[0][0]
+            vio_p2 = lst_vios[1][0]
+
+            n_poi1 = FindIntersectPoi(Vec3D(0,1,0), plane_p,vio_p1, lst_good[0][0])
+            n_poi2 = FindIntersectPoi(Vec3D(0,1,0), plane_p,vio_p2, lst_good[0][0])
+
+            n_tri = Tris3D(n_poi1,n_poi2, lst_good[0][0])
+
+            if not(n_tri.norm.is_equal(o_norm)):
+                n_tri = Tris3D(n_poi2,n_poi1, lst_good[0][0])
+
+
+            
+            return [n_tri]  
+        elif len(lst_vios) == 3:
+            return []
+        #print(self.player_head.subVec(self.mid_poi).magnitude())
+        tri.updateNorm()
         return [tri]
 
         clip_tri_x_neg = []
@@ -671,16 +819,15 @@ class Camera:
         return  
 
     def forward (self,magnitude):
-        dir = -1* self.norm_vec
+        dir = self.b
         
-
         vec = magnitude * dir
         self.player_head = self.player_head.addVec(vec)
         self.mid_poi = self.mid_poi.addVec(vec)
 
 
     def backward (self,magnitude):
-        dir =  self.norm_vec
+        dir =  -1 * self.b
         
 
         vec = magnitude * dir
@@ -689,7 +836,7 @@ class Camera:
 
         self.player_head = self.player_head.addVec(vec)
     def  left (self,magnitude):
-        dir =  -1*self.b1
+        dir =  -1*self.a
         
 
         vec = magnitude * dir
@@ -730,7 +877,7 @@ for i in range (500):
 near = 1
 m_z = -3
 
-p = -3
+p = -4
 player   = Vec3D(0,p,0)
 norm_vec = Vec3D(0,-1,0)
 b1       = Vec3D (1,0,0)
@@ -758,11 +905,12 @@ tri11    = Tris3D(v1,v2,v6)
 tri12    = Tris3D(v6,v5,v1)
 tri13    = Tris3D(v8,v7,v1,col="red")
 lst_tris = [tri1,tri2,tri3, tri4,tri5,tri6,tri7,tri8,tri9,tri10,tri11,tri12]
+#lst_tris = [tri6]
 cube     = Mesh(lst_tris)
 
-cube.scale(1)
-#cube.move(Vec3D(0,1,0))
-cam      = Camera(player,norm_vec,b1,b2,win,near=near,fov=90)
+
+cube.move(Vec3D(0,0,0))
+cam      = Camera(player,norm_vec,b1,b2,win,near=1,fov=90)
 
 
 """
@@ -774,19 +922,19 @@ mesh_cube =[Vec3D(1,1+4,1)    ,Vec3D(1,1+4,-1),
 
 if __name__ == "__main__":
     i = 0
-    step = 0.1/1.2
+    step = 0.1/4
     rot = 0.001
+    
+    print(Vec3D(-1,-1,1).SDistFromPlane(Vec3D(0,1,0),Vec3D(0,-3,0)))
     while(True):
-
-
         upArr   = win32api.GetKeyState(0x26)
         downArr = win32api.GetKeyState(0x28)
         righArr = win32api.GetKeyState(0x27)
         leftArr = win32api.GetKeyState(0x25)
-        w  = win32api.GetKeyState (0x57)
-        s  = win32api.GetKeyState (0x53)
-        a  = win32api.GetKeyState(0x41)
-        d  = win32api.GetKeyState(0x44)
+        w       = win32api.GetKeyState(0x57)
+        s       = win32api.GetKeyState(0x53)
+        a       = win32api.GetKeyState(0x41)
+        d       = win32api.GetKeyState(0x44)
 
 
         if (upArr!=0 and upArr!= 1):
@@ -810,11 +958,11 @@ if __name__ == "__main__":
             cam.rotateZ_(-rot)
 
         x,y,z = 0,0,0
-        ang = 0.00001
-        i += 0.00000001 
+        ang = 0.0000
+        i += 0.0000000
 
-        cube.rotateX_(ang)
-        cube.rotateZ_(ang)
+        cube.rotateX_(0*ang)
+        cube.rotateZ_(0*ang)
         cube.rotateY_(ang)
         
 
@@ -837,7 +985,7 @@ if __name__ == "__main__":
         ##lst_tris = [tri1,tri2,tri3, tri4,tri5,tri6,tri7,tri8,tri9,tri10,tri11,tri12]
         ##cam.draw_tris(lst_tris,win)
         cube.move(Vec3D(x,y,z))
-        cam.drawMesh(cube,wireFrame=False,lighting=True)
+        cam.drawMesh(cube,wireFrame=True,lighting=True)
         cube.move(Vec3D(-x,-y,-z))
 
         #cam.printPlayer()
