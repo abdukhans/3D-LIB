@@ -6,17 +6,81 @@ import time
 
 global calc
 calc = 0 
+
+
+class Vec2D:
+    def __init__(self,x,y,w=0):
+        self.x = x
+        self.y = y 
+        self.w = w
+
+    def addVec (self, other):
+        return Vec2D (self.x + other.x , self.y + other.y)
+
+    def subVec (self, other):
+        return Vec2D (self.x - other.x , self.y - other.y )
+    
+    def __mul__ (self,val):
+        return Vec2D(val * self.x ,val * self.y)
+    def __rmul__ (self,val):
+        return self.__mul__(val)
+
+    def __lmul__(self,val):
+        return self.__mul__(val)
+
+    def distance (self, other):
+        return m.sqrt( (self.x - other.x)**2 + (self.y- other.y)**2    )
+
+    def magnitude (self):
+        return self.distance(Vec2D(0,0,0))
+
+    def __str__(self):
+        return ("VEC 2D: "+ "( " + str(self.x) +" , " + str(self.y) +" )" )
+
+    def __sub__(self,other):
+        return self.subVec(other)
+
+    def dotProd (self, other):
+        return (self.x * other.x + self.y*other.y )
+
+    def rotateZ_ (self, degrees):
+        memx    = self.x
+        memy    = self.y
+        
+        self.x = memx*m.cos(m.degrees(degrees))  - memy*m.sin(m.degrees(degrees))
+
+        self.y = memx*m.sin(m.degrees(degrees))  + memy*m.cos(m.degrees(degrees))
+
+    def rotateY_ (self,degrees):
+
+        m_x    = self.x
+        m_z    = self.z
+        self.x = m_x*m.cos(m.degrees(degrees))  - m_z*m.sin(m.degrees(degrees))
+
+        self.z = m_x*m.sin(m.degrees(degrees))  + m_z*m.cos(m.degrees(degrees))
+
+    def rotateX_ (self,degrees):
+
+        m_y    = self.y
+        m_z    = self.z
+        self.y = m_y*m.cos(m.degrees(degrees))  - m_z*m.sin(m.degrees(degrees))
+
+        self.z = m_y*m.sin(m.degrees(degrees))  + m_z*m.cos(m.degrees(degrees))
+
+    def normalizeVec(self):
+        return (1/self.magnitude())*self    
+    
+
 class Vec3D:
     def __init__(self,x,y,z) :
         self.x = x
         self.y = y
         self.z = z
-
         self.w = 1
 
-        self.mem_x = x
+        """self.mem_x = x
         self.mem_y = y 
-        self.mem_z = z
+        self.mem_z = z"""
 
     def printVec(self,update=False):
         string = "( "+ str(self.x)+", " +str(self.y)+" , "+str(self.z)+" )"    
@@ -145,7 +209,75 @@ def FindIntersectPoi(plane_n:Vec3D, plane_p:Vec3D,line_start:Vec3D, line_end:Vec
     lineToIntersect = t*lineStartToEnd
     return line_start.addVec(lineToIntersect)
 
+def FindIntersectPoi2D(line_n:Vec2D, line_p:Vec2D,line_start:Vec2D, line_end:Vec3D):
+    line_n = line_n.normalizeVec()
+    line_d = -line_n.dotProd(line_p)
+    ad      = line_start.dotProd(line_n)
+    bd      = line_end.dotProd(line_n)
+    t = (-line_d - ad) / (bd - ad)
+    
+    lineStartToEnd = line_end.subVec(line_start)
+    lineToIntersect = t*lineStartToEnd
+    return line_start.addVec(lineToIntersect)
+    
 
+
+
+def isNumBetween(start,end,num):
+
+    if start <= num and num <= end:
+        return True
+    elif end <= num and num <= start:
+        return True
+    return False
+
+
+"""def Clip2DLine (lc_p1:Vec2D , lc_p2:Vec2D, lp_p1:Vec2D, lp_p2:Vec2D ):
+
+    m1 =(lc_p1.y - lc_p2.y )/(lc_p1.x - lc_p2.x )
+    m2 =(lp_p2.y - lc_p2.y )/(lp_p1.x - lp_p1.x )
+
+    
+    b1 = lc_p1.y   -(lc_p1.x)*m1
+    b2 = lp_p1.y   -(lp_p1.x)*m2
+
+
+
+    x_bar = (b1 - b2) / (m1 - m2 )
+
+
+    if isNumBetween(lc_p1.x, lc_p1.x, x_bar) and isNumBetween(lp_p1.x, lp_p1.x, x_bar):
+        pass
+    else:
+
+
+
+    pass
+"""
+
+class Tris2D:
+    def __init__(self,p1:Vec2D,p2:Vec2D, p3:Vec2D):
+        self.p1 = p1
+        self.p2 = p2
+        self.p3 = p3
+
+        p_p1   = Point(self.p1.x,self.p1.y)
+        p_p2   = Point(self.p2.x,self.p2.y)
+        p_p3   = Point(self.p3.x,self.p3.y)
+        self.poly = Polygon(p_p1,p_p2,p_p3,p_p1)
+
+
+
+    def setFill(self,color):
+        self.poly.setFill(color)
+
+    def setOutline(self,color):
+        self.poly.setOutline(color)
+    def draw_tri (self, win:GraphWin):  
+        self.poly.draw(win)
+        
+
+    
 
 class Tris3D:
     def __init__(self, p1:Vec3D,p2:Vec3D, p3:Vec3D,col="white"):
@@ -291,6 +423,72 @@ class Mesh:
         self.camera.unDrawTris(self.lst3d_tris)
 """
 
+def SDistFromLine (line_n:Vec2D, line_p:Vec2D, vec:Vec2D):
+    line_n = line_n.normalizeVec()
+    return (vec.dotProd(line_n) -  line_p.dotProd(line_n))
+    
+def ClipAgainstLine(line_n:Vec2D, line_p: Vec2D, lst_tris:list[Tris2D]):
+    clipped = []
+    for (tri) in lst_tris:
+        
+        lst_ps = [tri.p1,tri.p2,tri.p3]
+
+
+        lst_vios = []
+        lst_good = []
+        
+        for p in lst_ps:
+            if SDistFromLine(line_n,line_p,p) < 0:
+                lst_vios.append(p)
+            else:
+                lst_good.append(p)
+        if len(lst_vios) == 0:
+            clipped.append(tri)
+        elif len(lst_vios) == 1:
+            vio_p =  lst_vios[0]
+            gp1   =  lst_good[0]
+            gp2   = lst_good[1]
+
+            if gp1.y < gp2.y:
+                gp1,gp2= gp2, gp1
+
+
+            n1_poi  = FindIntersectPoi2D(line_n, line_p,vio_p , gp1 )
+            n2_poi  = FindIntersectPoi2D(line_n,line_p,vio_p , gp2 )
+
+            n1_tri  = Tris2D(n1_poi, gp1 , gp2 ) 
+            n2_tri  = Tris2D(n1_poi, n2_poi , gp2 ) 
+
+            clipped.append(n1_tri)
+            clipped.append(n2_tri)
+
+
+
+        elif len(lst_vios) ==2:
+            vio_p1 =  lst_vios[0]
+            vio_p2 =  lst_vios[1]
+            gp     = lst_good[0]
+            if vio_p1.y < vio_p2.y:
+                vio_p1, vio_p2= vio_p2, vio_p1
+
+
+            n1_poi  =   FindIntersectPoi2D(line_n,line_p,vio_p1 , gp )
+            n2_poi  =   FindIntersectPoi2D(line_n,line_p,vio_p2 , gp )
+
+
+            n_tri = Tris2D(n1_poi,n2_poi,gp)
+
+            clipped.append(n_tri)
+
+            pass
+        elif len(lst_vios) == 3:
+            pass
+
+        
+
+    
+    return clipped
+
 
 
 class Camera:
@@ -371,15 +569,15 @@ class Camera:
                 if light <= 0:
                     light = 0.1
 
-                l_d.append(self.draw_tri(tri, light,wireFrame))
+                l_d+= self.draw_tri(tri, light,wireFrame)
             elif not (lighting):
-                l_d.append(self.draw_tri(tri,wireFrame,lighting=False))
+                l_d+= self.draw_tri(tri,wireFrame,lighting=False)
 
 
       
         for tri in l_d:
             self.drawn_tri.append(tri)
-            tri.poly.draw(self.window)
+            tri.draw_tri(self.window)
 
         
 
@@ -399,12 +597,15 @@ class Camera:
         for vec in tri3D.getPoints():
             lst_points.append(self.calc(vec))
 
-        p1 = lst_points[0]
-        p2 = lst_points[1]
-        p3 = lst_points[2]
+        v2_p1 = lst_points[0]
+        v2_p2 = lst_points[1]
+        v2_p3 = lst_points[2]
         
 
         #print (tri3D.p1,tri3D.p2,tri3D.norm)
+
+        l_c = self.clip2D(Tris2D(v2_p1, v2_p2, v2_p3))
+
 
 
         """
@@ -417,24 +618,40 @@ class Camera:
         tri3D.l3.setFill("white")
         """
 
-        tri3D.poly = Polygon(p1, p2, p3,p1)
+        """p1 = Point (v2_p1.x,v2_p1.y)
+        p2 = Point (v2_p2.x,v2_p2.y)
+        p3 = Point (v2_p3.x,v2_p3.y)
 
-        if wireFrame:
-            tri3D.poly.setOutline(tri3D.col)
 
+        tri3D.poly = Polygon(p1, p2, p3,p1)"""
+
+        
         
         if lighting:
             red    = int(light * 255)
             green  = int(light * 255)
             blue   = int(light * 255)
-            tri3D.poly.setFill(color_rgb(red,green,blue))
+            
+            
+            for tri_c in l_c:
+                tri_c.setFill(color_rgb(red,green,blue))
+                tri_c.setOutline(color_rgb(red,green,blue))
+
+
+            """tri3D.poly.setFill(color_rgb(red,green,blue))
             if not(wireFrame): 
                 tri3D.poly.setOutline(color_rgb(red,green,blue))
+            """
+        if wireFrame:
+            for tri_c in l_c:
+                tri_c.setOutline("white")
 
 
 
-        window = self.window
-        return tri3D
+
+
+        
+        return l_c
         
 
     def draw(self, lst_vec3d):
@@ -498,7 +715,7 @@ class Camera:
         vect =np.array( [l.x,l.z,l.y,1])
         vect_proj =(vect).dot(mat_proj)
 
-        l.w = vect_proj[2]/abs(vect_proj[3])
+        l.w = vect_proj[2]
 
     
         """t = l.subVec(self.mid_poi)
@@ -531,7 +748,10 @@ class Camera:
         #print(self.player_head)
 
         #print("y:" ,vect_proj[3])
-        return Point(vect_proj[0]/vect_proj[3] , vect_proj[1]/vect_proj[3] )
+
+
+        vect2d = Vec2D(vect_proj[0]/vect_proj[3] , vect_proj[1]/vect_proj[3],  w=1/vect_proj[3])
+        return vect2d
     
     def incrementY (self, incr):
         self.mid_poi.add_y(incr)
@@ -685,11 +905,8 @@ class Camera:
             print(n_poi2)
             print("_____")    """
 
-            n1 = [(n_poi1,idx),(pg1,pg1_idx), (pg2,pg2_idx)]
-            n1.sort(key=lambda x: x[1])
-
-            n2 = [(n_poi1,idx),(n_poi2,idx), (pg2,pg2_idx)]
-            n2.sort(key=lambda x: x[1])
+           
+            
 
             n_tri1 = Tris3D(n_poi1, pg1 ,pg2)
 
@@ -710,6 +927,7 @@ class Camera:
                 n_tri2 = Tris3D(n_poi2, n_poi1 ,pg2)
                 #n_tri2.col = "purple"
             
+                pass
             #print("O NORM: " , o_norm)
 
                 
@@ -757,6 +975,85 @@ class Camera:
             clip_tri_y_pos += self.clipTriEdge(tri_, 0,1 )
     
         return tri
+
+
+    def clip2D(self, tri:Tris2D):
+        #clip aginst x =  - 1
+
+        """lst_ps = [tri.p1,tri.p2,tri.p3]
+
+        lst_vios_y_neg = []
+        lst_good_y_neg = []
+
+        for i in lst_ps:
+            if i.y < -1 :
+                lst_vios_y_neg.append(i)
+            else:
+                lst_good_y_neg.append(i)
+
+
+        lst_p2 = []
+        if len(lst_vios_y_neg) == 1:
+            vio_p =  lst_vios_y_neg[0]
+            gp1   =  lst_good_y_neg[0]
+            gp2   = lst_good_y_neg[1]
+
+            if gp1.y < gp2.y:
+                gp1.y,gp2.y= gp2.y, gp1.y
+
+
+            n1_poi  = FindIntersectPoi2D(Vec2D(0,-1),Vec2D(-1,0),vio_p , gp1 )
+            n2_poi  = FindIntersectPoi2D(Vec2D(0,-1),Vec2D(-1,0),vio_p , gp2 )
+
+            n1_tri  = Tris2D(n1_poi, gp1 , gp2 ) 
+            n2_tri  = Tris2D(n1_poi, n2_poi , gp2 ) 
+
+            lst_p2.append(n1_tri)
+            lst_p2.append(n2_tri)
+
+
+
+        elif len(lst_vios_y_neg) ==2:
+            vio_p1 =  lst_vios_y_neg[0]
+            vio_p2 =  lst_vios_y_neg[1]
+            gp     = lst_good_y_neg[0]
+            if vio_p1.y < vio_p2:
+                vio_p1.y , vio_p2= vio_p2.y , vio_p1
+
+
+            n1_poi  =   FindIntersectPoi2D(Vec2D(0,-1),Vec2D(-1,0),vio_p1 , gp )
+            n2_poi  =   FindIntersectPoi2D(Vec2D(0,-1),Vec2D(-1,0),vio_p2 , gp )
+
+
+            n_tri = Tris2D(n1_poi,n2_poi,gp)
+
+            lst_p2.append(n_tri)
+
+            pass
+        elif len(lst_vios_y_neg) == 3:
+            return []"""
+
+
+        #ClipAgainstLine(line_n:Vec2D, line_p: Vec2D, lst_tris:list[Tris2D])
+
+        lst_tri = [tri]
+
+        x_neg = ClipAgainstLine(Vec2D(1,0),Vec2D(-1,0),lst_tri)
+        y_pos = ClipAgainstLine(Vec2D(0,-1),Vec2D(0,1),x_neg)
+        x_pos = ClipAgainstLine(Vec2D(-1,0),Vec2D(1,0),y_pos)
+        y_neg = ClipAgainstLine(Vec2D(0,1),Vec2D(0,-1),x_pos)
+
+
+
+
+
+
+
+            
+
+
+
+        return y_neg
 
     def clipTris(self, lst_tris):
 
@@ -910,7 +1207,7 @@ tri11    = Tris3D(v1,v2,v6)
 tri12    = Tris3D(v6,v5,v1)
 tri13    = Tris3D(v8,v7,v1,col="red")
 lst_tris = [tri1,tri2,tri3, tri4,tri5,tri6,tri7,tri8,tri9,tri10,tri11,tri12]
-#lst_tris = [tri6]
+lst_tris = [tri6]
 cube     = Mesh(lst_tris)
 
 
@@ -992,7 +1289,7 @@ if __name__ == "__main__":
         ##lst_tris = [tri1,tri2,tri3, tri4,tri5,tri6,tri7,tri8,tri9,tri10,tri11,tri12]
         ##cam.draw_tris(lst_tris,win)
         cube.move(Vec3D(x,y,z))
-        cam.drawMesh(cube,wireFrame=False,lighting=True)
+        cam.drawMesh(cube,wireFrame=True,lighting=False)
         cube.move(Vec3D(-x,-y,-z))
 
         #cam.printPlayer()
