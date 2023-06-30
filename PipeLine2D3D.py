@@ -19,10 +19,9 @@ import sys
 n =0  
 
 
+@njit
 def PipeLine3D(tri:np.ndarray, a:np.ndarray,b:np.ndarray,c:np.ndarray,player_head:np.ndarray,near:float,q:float,tan_fov:float):
     global n 
-
-   
     view_tri   = p3d.viewTri(tri,a,b,c,player_head)
 
 
@@ -74,7 +73,7 @@ def PipeLine3D(tri:np.ndarray, a:np.ndarray,b:np.ndarray,c:np.ndarray,player_hea
         triangles will be put.  
 """
 
-#@njit
+@njit
 def RunPipeLines(Lst_tri:np.ndarray, a:np.ndarray,b:np.ndarray,c:np.ndarray,player_head:np.ndarray,near:float,q:float,tan_fov:float):
 
     global n 
@@ -110,15 +109,8 @@ def RunPipeLines(Lst_tri:np.ndarray, a:np.ndarray,b:np.ndarray,c:np.ndarray,play
         tri = res_buff_2d[idx]
         clipped_tri = p2d.clip2D(tri.reshape(-1))
         num_2D_tris = int(clipped_tri[-1   ])
-
-        
-            
-
-        n += 1
         res_buff_2d_ac[res_buff_2d_ac_idx: res_buff_2d_ac_idx + 6*num_2D_tris] = clipped_tri[0:6*num_2D_tris]
-
-
-        if n < 10:
+        if n < -1:
             print("2D TRIS: \n", tri.reshape(-1))
             print("Clipped Tri:\n",clipped_tri)
             print("NUM 2D tris: " , num_2D_tris)
