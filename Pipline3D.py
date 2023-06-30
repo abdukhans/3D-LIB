@@ -260,7 +260,7 @@ def populateTriTensor(tri_tensor:np.ndarray,tri:np.ndarray,idx:int):
             to new 3D triangles
 """
 @njit
-def clip3D(tri:np.ndarray,near:float, idx:int, inspect:int):
+def clip3D(tri:np.ndarray,near:float):
 
 
     # p1     = np.array([tri[0],tri[1],tri[2]],dtype=np.float64)
@@ -428,9 +428,28 @@ def perspectiveProj(vec:np.ndarray,tan_fov:float,q:float,near:float):
             [           0,           0,-near*q     ,0]
         ])
     vect      = np.array([vec[0],vec[2],vec[1],1.0],dtype=np.float64)
-    vect_proj = vectMatMul(vect,mat_proj)
+    vect_proj = vectMatMul(vect,mat_proj,4)
+    #print("vect: ",vect)
+    #print("Vect proj: ",vect_proj)
     perspective_vect = vect_proj/vect_proj[3] 
+    #print("Perspective proj: ",perspective_vect)
     return perspective_vect
+
+
+
+@njit
+def projTri(tri:np.ndarray,tan_fov:float,q:float,near:float):
+    tri2D = np.empty(shape=(3,2))
+    tri2d_idx = 0
+    for point in tri:
+        proj_point = perspectiveProj(point,tan_fov,q,near)
+        tri2D[tri2d_idx][0]= proj_point[0]
+        tri2D[tri2d_idx][1]= proj_point[1]
+        tri2d_idx +=1 
+
+    return tri2D
+
+
 
 
 
@@ -589,7 +608,7 @@ if __name__ == '__main__' and 'test' in sys.argv :
 
 
             view_tri     = viewTri(cur_tri,cam_a,cam_b,cam_c,player_head)
-            clipped_tris = clip3D(view_tri,near,tri_idx,int(inspect))
+            clipped_tris = clip3D(view_tri,near)
 
             num_tris = len(clipped_tris)
 
@@ -647,9 +666,12 @@ if __name__ == '__main__' and 'test' in sys.argv :
 
         print("PASSED AC 3D test!!!!!!!")
 
-    test_VC_3D()
 
-    test_AC_3D()
+        
+
+    # test_VC_3D()
+
+    # test_AC_3D()
 
     #inp = np.array([[ 0.9576518,  -0.35874133,  1.67421825,], [ 0.9673776,  -0.34976948,  1.65103526],[ 0.98,       -0.50318586,  1.60287367]])
 
@@ -657,6 +679,16 @@ if __name__ == '__main__' and 'test' in sys.argv :
     
 
     tensor = np.empty(shape=(1,3,3),dtype=np.float64)
+
+    vec = np.array([1,2,3],dtype=np.float64)
+    cam_a       = np.array([1.0, 0.0, 0.0])
+    cam_b       = np.array([0.0, 1.0, 0.0])
+    cam_c       = np.array([0  , 0.0, 1.0])
+    player_head = np.array([0  ,-2.0, 0.0])
+
+
+    q = 10 / (10-1)
+    perspectiveProj(vec,90.0,q,1)
 
 
     # populateTriTensor(tensor,inp,0)

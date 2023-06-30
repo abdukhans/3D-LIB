@@ -21,10 +21,10 @@ parse_3d_tris = True if 'p3' in sys.argv else False
 
 
 if parse_2d_tris:
-    list_2d_numpy_AC   = np.zeros(2246*6,dtype=np.float64)
+    list_2d_numpy_AC   = np.zeros(6320*6,dtype=np.float64)
     numpy_num_tris_AC  = 0 
 
-    list_2d_numpy_BC   = np.zeros(2246*6,dtype=np.float64)
+    list_2d_numpy_BC   = np.zeros(6320*6,dtype=np.float64)
     numpy_num_tris_BC  = 0
 
 if parse_3d_tris:
@@ -852,7 +852,6 @@ def draw_tri (tri3D:Tris3D, light , window:GraphWin,tan_fov,q,near,drawn_tri,wir
 
     l_c:list[Tris2D] = clip2D(Tris2D(v2_p1, v2_p2, v2_p3))
 
-        
     
 
 
@@ -891,7 +890,7 @@ check_first = True
 
 def Pipeline(tri:Tris3D,a:Vec3D,b:Vec3D,c:Vec3D,player_head:Vec3D,near:float,lighting:bool,wireFrame:bool,window:GraphWin,tan_fov,q,drawn_tri):
     
-    if(tri.norm.dotProd(player_head.subVec(tri.midPoi()).normalizeVec())< 0 and not(parse_3d_tris )):
+    if(tri.norm.dotProd(player_head.subVec(tri.midPoi()).normalizeVec())< 0 and not(parse_3d_tris ) and not(parse_2d_tris)):
         return
 
 
@@ -1080,6 +1079,7 @@ class Camera:
         global parse_2d_tris
         
         for tri in self.drawn_tri:
+            tri:Tris2D
             tri.draw_tri(self.window)
 
             if parse_2d_tris:
@@ -1738,7 +1738,7 @@ tri12    = Tris3D(v6,v5,v1)
 tri13    = Tris3D(v8,v7,v1,col="red")
 lst_tris = [tri1,tri2,tri3, tri4,tri5,tri6,tri7,tri8,tri9,tri10,tri11,tri12]
 #lst_tris = [tri6]
-#cube     = Mesh(lst_tris)
+# cube     = Mesh(lst_tris)
 cube     = Mesh([],file_path="teapot.obj")
 
 
