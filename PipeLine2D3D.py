@@ -1,5 +1,6 @@
 import Pipline2D as p2d
 import Pipline3D as p3d
+from Utils import utils as ut
 import numpy as np
 from numba import njit
 import math as m
@@ -16,13 +17,54 @@ import sys
         A  'n' by 3 by 2 numpy array that will hold all 2D tirangles
 """
 
+
+
+
 n =0  
 
 
+test_all = "testAll" in sys.argv
+
+@njit
+def getMidPoi(tri:np.ndarray):
+
+    sum_vec = np.zeros(3,dtype=np.float64)
+    for i in range(3):
+        sum_vec += tri[i]
+
+    return sum_vec /  3
+
 @njit
 def PipeLine3D(tri:np.ndarray, a:np.ndarray,b:np.ndarray,c:np.ndarray,player_head:np.ndarray,near:float,q:float,tan_fov:float):
-    global n 
+
+    # return np.empty(shape=(0,3,2),dtype=np.float64)
+
+    # if(tri.norm.dotProd(player_head.subVec(tri.midPoi()).normalizeVec())< 0 and not(parse_3d_tris ) and not(parse_2d_tris)):
+    #     return
+
+   
+    norm_tri = p3d.getNorm(tri)
+
+    ph_sub_mid_poi = np.subtract(player_head,getMidPoi(tri)  )
+
+
+    #ph_sub_mid_poi_normalized = p3d.norm(ph_sub_mid_poi)
+
+    if p3d.dotProd3(norm_tri,ph_sub_mid_poi)  < 0 and not (test_all) :
+        return np.empty(shape=(0,3,2),dtype=np.float64)
+
+
+    #print(player_head)
+
+
+
+
+
+
     view_tri   = p3d.viewTri(tri,a,b,c,player_head)
+
+
+
 
 
     # if n== 0 :
@@ -72,7 +114,6 @@ def PipeLine3D(tri:np.ndarray, a:np.ndarray,b:np.ndarray,c:np.ndarray,player_hea
         Note the '+1'  in   2*'num_tris'*16*3*2 + 1  is where the number of 2D 
         triangles will be put.  
 """
-
 @njit
 def RunPipeLines(Lst_tri:np.ndarray, a:np.ndarray,b:np.ndarray,c:np.ndarray,player_head:np.ndarray,near:float,q:float,tan_fov:float):
 
@@ -88,18 +129,19 @@ def RunPipeLines(Lst_tri:np.ndarray, a:np.ndarray,b:np.ndarray,c:np.ndarray,play
         res_buff_idx += num_2D_tris
 
 
-    print("res buff idx: ", res_buff_idx)
+    #print("res buff idx: ", res_buff_idx)
 
 
-    for i in range(res_buff_idx):
-        tri2DFlat = res_buff_2d[i].reshape(-1)
-        for cord in range(6):
-            if abs(tri2DFlat[cord] - p2d.bc_arr[6*i + cord]) > 0.0001:
-                print("ERR: ", i)
-                print("p2d.bc_arr: ", p2d.bc_arr[6*i + cord] )
-                print("res_buff_2d: ", tri2DFlat[cord])
-                print("BC ERROR!!!!")
-                return
+    if test_all:
+        for i in range(res_buff_idx):
+            tri2DFlat = res_buff_2d[i].reshape(-1)
+            for cord in range(6):
+                if abs(tri2DFlat[cord] - p2d.bc_arr[6*i + cord]) > 0.0001 and test_all:
+                    print("ERR: ", i)
+                    print("p2d.bc_arr: ", p2d.bc_arr[6*i + cord] )
+                    print("res_buff_2d: ", tri2DFlat[cord])
+                    print("BC ERROR!!!!")
+                    return
 
 
 
@@ -110,7 +152,7 @@ def RunPipeLines(Lst_tri:np.ndarray, a:np.ndarray,b:np.ndarray,c:np.ndarray,play
         clipped_tri = p2d.clip2D(tri.reshape(-1))
         num_2D_tris = int(clipped_tri[-1   ])
         res_buff_2d_ac[res_buff_2d_ac_idx: res_buff_2d_ac_idx + 6*num_2D_tris] = clipped_tri[0:6*num_2D_tris]
-        if n < -1:
+        if n < -1 and test_all:
             print("2D TRIS: \n", tri.reshape(-1))
             print("Clipped Tri:\n",clipped_tri)
             print("NUM 2D tris: " , num_2D_tris)
@@ -120,16 +162,7 @@ def RunPipeLines(Lst_tri:np.ndarray, a:np.ndarray,b:np.ndarray,c:np.ndarray,play
         tot_num_2D_tris+= num_2D_tris
 
     res_buff_2d_ac[2*num_tris*16*3*2] = tot_num_2D_tris
-
-
-
-
     return res_buff_2d_ac
-
-
-
-
-
 
 
 if __name__ == "__main__" :
@@ -143,6 +176,8 @@ if __name__ == "__main__" :
         player_head = np.array([0  ,-2.0, 0.0])
 
 
+
+        print(BC_Tri_Arr[0])
         ac_arr = RunPipeLines(BC_Tri_Arr,cam_a,cam_b,cam_c,player_head,1.0,10/(10-1),1.0)
         tot    = 0 
         wrong  = False

@@ -19,9 +19,15 @@ from Tri3D import Tris3D
 from Utils import utils as ut
 from Mesh import Mesh
 from Camera import Camera, parse_2d_tris,parse_3d_tris
+
+
+
+use_numpy = 'nump' in sys.argv
+
 global calc
 calc = 0 
-
+global n
+n =  0 
 height = 500
 width  = 500 
 win    = GraphWin("Lib", height=height ,width= width,autoflush=False)
@@ -29,15 +35,6 @@ win.setBackground("black")
 win.setCoords(-1,-1,1,1)
 
 
-
-
-
-"""
-for i in range (500):
-    p = Point(i/(85),1)
-    p.setFill("Red")
-    p.draw(win)
-"""
 near = 1
 m_z = -3
 
@@ -70,35 +67,28 @@ tri12    = Tris3D(v6,v5,v1)
 tri13    = Tris3D(v8,v7,v1,col="red")
 lst_tris = [tri1,tri2,tri3, tri4,tri5,tri6,tri7,tri8,tri9,tri10,tri11,tri12]
 #lst_tris = [tri6]
-# cube     = Mesh(lst_tris)
-cube     = Mesh([],file_path="teapot.obj")
+#cube     = Mesh(lst_tris)
+cube     = Mesh([],file_path="teapot.obj",use_numpy=use_numpy)
 
 
 
 #cube.move(Vec3D(0,0,0))
-cube.scale(0.7)
-cube.rotateX_(-90)
+#cube.scale(0.2)
+#cube.rotateX_(-90)
 cam      = Camera(player,norm_vec,b1,b2,win,near=1,fov=90)
 
 
 
-
-
-"""
-mesh_cube =[Vec3D(1,1+4,1)    ,Vec3D(1,1+4,-1),
-             Vec3D(1,-1+4,-1),  Vec3D(1,-1+4,1),
-            Vec3D(-1,1+4,1)   ,Vec3D(-1,1+4,-1),
-            Vec3D(-1,-1+4,-1) ,Vec3D(-1,-1+4,1) ]
-"""
-
 def main():
     i = 0
-    step = 0.1/1.3
-    rot = 0.001
+    step = 0.1
+    rot = 0.01
     
     #print(Vec3D(-1,-1,1).SDistFromPlane(Vec3D(0,1,0),Vec3D(0,-3,0)))
 
     profileMode = True if 'p' in sys.argv else False
+
+    pos = Vec3D(1,0,4)
     while( True):
         start  = t.default_timer()
         upArr   = win32api.GetKeyState(0x26)
@@ -109,8 +99,6 @@ def main():
         s       = win32api.GetKeyState(0x53)
         a       = win32api.GetKeyState(0x41)
         d       = win32api.GetKeyState(0x44)
-
-
         if (upArr!=0 and upArr!= 1):
             cam.forward(step)
         if(downArr !=0 and downArr != 1 ):
@@ -132,36 +120,17 @@ def main():
             cam.rotateZ_(-rot)
             
         i += 1
-        x,y,z = -1,1,3
+        x,y,z = 1,1,3
         ang = 0.001
+
         
-
-        """cube.rotateX_(0*ang)
-        cube.rotateZ_(ang)
-        cube.rotateY_(0*ang)"""
         
-       
+        # cube.rotateX_(ang)
+        # cube.move(-1*pos)
         
-        """for vec in lst_vs:
-            pass
-            
-            #vec.rotateZ_(ang)
-
-            
-            #vec.rotateX_(ang)
-
-            #vec.rotateZ_(i*0.0005+0.01)
-            #vec.rotateY_(ang)
-
-
-            #cube.updateNorms()"""
-
-        ##cam.draw(mesh_cube,win)
-        ##lst_tris = [tri1,tri2,tri3, tri4,tri5,tri6,tri7,tri8,tri9,tri10,tri11,tri12]
-        ##cam.draw_tris(lst_tris,win)
-        #cube.move(Vec3D(x,y,z))
-
-
+        # cube.rotateY_(ang)
+        # pos+= Vec3D(x/100,y/100,0)
+        # cube.move(pos)
         if profileMode:
             with cProfile.Profile() as pr:
                 cam.drawMesh(cube,wireFrame=False,lighting=True)
@@ -176,8 +145,10 @@ def main():
 
 
         #cam.printPlayer()
-
+        # if n ==0:
+        #     print(len(cam.drawn_tri),"\n")
         update(60)
+        # n+= 1
 
        
 
@@ -205,4 +176,28 @@ if __name__ == "__main__":
     
       
 
+    """cube.rotateX_(0*ang)
+        cube.rotateZ_(ang)
+        cube.rotateY_(0*ang)
+"""
+        
+       
+        
+"""for vec in lst_vs:
+    pass
     
+    #vec.rotateZ_(ang)
+
+    
+    #vec.rotateX_(ang)
+
+    #vec.rotateZ_(i*0.0005+0.01)
+    #vec.rotateY_(ang)
+
+
+    #cube.updateNorms()"""
+
+##cam.draw(mesh_cube,win)
+##lst_tris = [tri1,tri2,tri3, tri4,tri5,tri6,tri7,tri8,tri9,tri10,tri11,tri12]
+##cam.draw_tris(lst_tris,win)
+#cube.move(Vec3D(x,y,z))

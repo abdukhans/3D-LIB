@@ -7,6 +7,7 @@ from graphics import *
 import numpy as np
 from Utils import utils as ut
 import math as m 
+import PipeLine2D3D as p2D3D
 
 argc = len(sys.argv)
 parse_2d_tris =  True if 'p2' in sys.argv else False
@@ -353,6 +354,9 @@ def draw_tri (tri3D:Tris3D, light , window:GraphWin,tan_fov,q,near,drawn_tri,wir
             
     if wireFrame and lighting:
             for tri_c in l_c:
+
+
+
                 tri_c.setOutline("white")
                 red    = int(light * 255)
                 green  = int(light * 255)
@@ -372,7 +376,7 @@ def draw_tri (tri3D:Tris3D, light , window:GraphWin,tan_fov,q,near,drawn_tri,wir
 
 
     for tri_c in l_c:
-            pass
+        
 
             #sema.acquire()
             #tri_c.draw_tri(window)
@@ -385,8 +389,10 @@ check_first = True
 
 def Pipeline(tri:Tris3D,a:Vec3D,b:Vec3D,c:Vec3D,player_head:Vec3D,near:float,lighting:bool,wireFrame:bool,window:GraphWin,tan_fov,q,drawn_tri):
     
-    if(tri.norm.dotProd(player_head.subVec(tri.midPoi()).normalizeVec())< 0 and not(parse_3d_tris ) and not(parse_2d_tris)):
+    if(tri.norm.dotProd(player_head.subVec(tri.midPoi())) < 0 and not(parse_3d_tris ) and not(parse_2d_tris)):
         return
+    # if(tri.norm.dotProd(b)) > 0 and not(parse_3d_tris ) and not(parse_2d_tris):
+    #     return
 
 
     global numpy_num_tris_3BC
@@ -501,18 +507,18 @@ class Camera:
 
     
         
-
+        self.useNumpy = False
 
         # Basis vectors
         self.b1 = b1
         self.b2 = b2
 
 
+
     def printPlayer(self, update=False):
         print("Player POSITION: ",end = "")
 
         if(not(update)):
-          
             self.player_head.printVec()
         else:
             pass
@@ -572,6 +578,7 @@ class Camera:
         global numpy_num_tris_AC
         global parse_2d_tris
         
+        #self.drawn_tri = []
         for tri in self.drawn_tri:
             tri:Tris2D
             tri.draw_tri(self.window)
@@ -623,14 +630,68 @@ class Camera:
             #print("numpy_num_tris_3BC: ", numpy_num_tris_3BC)
             with open('BC_3D.txt', 'w+') as fp:
                 fp.write("\n".join(str(item) for (idx, item) in enumerate(list_3d_numpy_BC) if idx < 9*numpy_num_tris_3BC ))
+
+
+    def draw_tris_nump (self, lst_tri3D:np.ndarray,wireFrame=True,lighting=True):
+
+        self.useNumpy = True
+        lst_2D = p2D3D.RunPipeLines(lst_tri3D,self.a.numpify(),self.b.numpify(),self.c.numpify(),self.player_head.numpify(),self.near,self.q,self.tan_fov)
+
+        # print("Player head: ",self.player_head.numpify())
+
+
+        tot2DTris = int(lst_2D[-1])
+
+        # print("Lst 2D: ", lst_2D)
+        # print("TOT 2D TRIS: ",tot2DTris, "\n\n\n\n" )
+
+
+        tri_idx= 0
+        while tri_idx < tot2DTris:
+            lst_ps:list[Point] = [] 
+            for point in range(3):
+                lst_ps.append(Point(lst_2D[6*tri_idx + 2*point + 0], lst_2D[6*tri_idx + 2*point + 1] ))
+
+
+
+      
+            poly = Polygon(lst_ps[0],lst_ps[1],lst_ps[2],lst_ps[0])
+            
+            poly.setFill("white")
+            poly.setOutline("blue")
+            self.drawn_tri.append(poly)
+
+            poly.draw(self.window)
+            tri_idx+=1    
+
+
+
+
+
+    def getDrawnList(self,numpList):
+
+        pass
+
+
+    def drawMesh (self,mesh: Mesh, wireFrame=True,lighting=True ):
+        if not (mesh.isNumpy):
+            self.draw_tris(mesh.lst3d_tris,wireFrame,lighting)
+
+        else:
+            self.draw_tris_nump(mesh.numpListTri)
     def unDrawTris(self,lighting=True):
-        for tri in self.drawn_tri:
-            tri.poly.undraw()      
+
+        if self.useNumpy:
+            for poly in self.drawn_tri:
+                poly.undraw()      
+
+        else:
+            for tri in self.drawn_tri:
+                tri.poly.undraw()
 
         self.drawn_tri = []  
 
-    def unDrawTri(self,tri3D:Tris3D):
-        
+    def unDrawTri(self,tri3D:Tris3D): 
         tri3D.poly.undraw()
 
         pass
@@ -811,8 +872,7 @@ class Camera:
         self.player_head.add_z(incr) 
 
 
-    def drawMesh (self,mesh: Mesh, wireFrame=True,lighting=True ):
-        self.draw_tris(mesh.lst3d_tris,wireFrame,lighting)
+    
 
     def undrawMesh (self,mesh:Mesh):
         self.unDrawTris()

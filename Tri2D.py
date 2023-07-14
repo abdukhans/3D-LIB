@@ -13,11 +13,18 @@ class Tris2D:
 
 
 
-    def setFill(self,color):
+    def setFill(self,color): 
         self.poly.setFill(color)
 
     def setOutline(self,color):
         self.poly.setOutline(color)
     def draw_tri (self, win:GraphWin):  
         
+
+        # for i in range(300):
+        #     for j in range(300):
+        #         win.plotPixel(100 + i,100 + j ,color="red")
+
         self.poly.draw(win)
+
+        pass

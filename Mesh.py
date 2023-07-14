@@ -1,11 +1,12 @@
+import numpy as np
 from Vec3D import Vec3D
 from Tri3D import Tris3D
 
 class Mesh:
-    def __init__(self, lst3d_tris:list[Tris3D],file_path=""):
+    def __init__(self, lst3d_tris:list[Tris3D],file_path="",use_numpy=False):
         self.lst3d_tris = lst3d_tris
-
         self.lst_vs:set = set()
+        self.numpListTri = np.zeros(shape=(0,3,3),dtype=np.float64)
         for i in self.lst3d_tris:
             """if i.p1 not in self.lst3d_tris:
                 self.lst_vs.add(i.p1)
@@ -20,7 +21,7 @@ class Mesh:
         """for i in (self.lst_vs):
             print(i)"""
         
-        if file_path != "":
+        if file_path != "" and not(use_numpy):
             self.file = file_path
             self.createObj()
             self.lst_vs:set = set()
@@ -35,6 +36,31 @@ class Mesh:
                 self.lst_vs.add(i.p1)
                 self.lst_vs.add(i.p2)
                 self.lst_vs.add(i.p3)
+        elif file_path!="":
+            self.file =  file_path
+            self.createNumpObj()
+
+            self.lst_vs:set = set()
+            for i in self.lst3d_tris:
+                """if i.p1 not in self.lst3d_tris:
+                    self.lst_vs.add(i.p1)
+                if i.p2 not in self.lst3d_tris:
+                    self.lst_vs.add(i.p2)
+                if i.p3 not in self.lst3d_tris:
+                    self.lst_vs.add(i.p3)"""
+
+                self.lst_vs.add(i.p1)
+                self.lst_vs.add(i.p2)
+                self.lst_vs.add(i.p3)
+
+
+
+
+            pass
+        
+        
+        self.isNumpy = use_numpy
+
 
 
         #print(len(self.lst_vs))
@@ -102,7 +128,7 @@ class Mesh:
             #print("OBJ CREATION: " , self.lst3d_tris[0], "\n------------")
             #print(list_3d_numpy_BC)
             #print("LEN: ", len(self.lst3d_tris))
-
+        print(self.lst3d_tris[0])
         # if parse_3d_tris:
         #     print("num_nums_added         : ", num_nums_added) 
         #     print("len of list_3d_numpy_BC: ", len(list_3d_numpy_BC)) 
@@ -122,15 +148,84 @@ class Mesh:
 
         
         pass
+
+    def createNumpObj(self):
+        lst_verts = []
+        with open(self.file) as file:
+            string = file.read()
+            lst_format = string.split('\n')
+            #lst_string  = "".join(lst_format).split(" ")
+            num_vert_read = 0 
+            floats = []
+            idx = 0 
+            #print(lst_format)
+            while idx < len (lst_format):
+
+                str_elm = lst_format[idx]
+                
+                str_elm_f = str_elm.split(" ")
+                #print(str_elm_f)
+
+                if str_elm_f[0] == "v":
+                    lst_verts.append(Vec3D( float(str_elm_f[1] ), float(str_elm_f[2]) , float(str_elm_f[3])))
+                
+                idx += 1
+
+            #print(len(lst_verts))
+            idx = 0 
+            # global parse_3d_tris
+            # global numpy_num_tris_3BC
+            # numpy_num_tris_3BC = 0
+                    
+            while idx < len (lst_format):
+                str_elm = lst_format[idx]                
+                str_elm_f = str_elm.split(" ")
+                #print(str_elm_f)
+                if str_elm_f[0] == "f":
+                    id1 = int(str_elm_f[1])
+                    id2 = int (str_elm_f[2])
+                    id3 = int(str_elm_f[3])
+                    if idx %1 == 0:
+                        v1 = lst_verts[id1 - 1]
+                        v2 = lst_verts[id2 - 1]
+                        v3 = lst_verts[id3 - 1]
+                        numpTri = np.array([[[v1.x,v1.y,v1.z],
+                                             [v2.x,v2.y,v2.z],
+                                             [v3.x,v3.y,v3.z]]],dtype=np.float64)
+                        self.numpListTri = np.append(self.numpListTri,numpTri,axis=0)
+                        self.lst3d_tris.append(Tris3D(lst_verts[id1 - 1],lst_verts[id2 - 1],lst_verts[id3 - 1]))
+                idx  += 1
+
+
+        print("NUMP TRIS[0]: ",self.numpListTri[0], "LIST TRIS[0]: ",self.lst3d_tris[0])
+
+
+        
+
+
+
+
+
+
+
+        pass
+
+
+
+
     
     def move(self,trans_vec:Vec3D):
         for i in self.lst_vs:
             i.transVec(trans_vec)
 
+
+
     def rotateX_(self,degrees):
         for i in self.lst_vs:
             i.rotateX_(degrees)
         self.updateNorms()
+
+
 
     def rotateY_(self,degrees):
         for i in self.lst_vs:
@@ -153,7 +248,6 @@ class Mesh:
         for v in self.lst_vs:
             nv:Vec3D = v*(factor)
             v.set_coords(nv.x,nv.y,nv.z)
-    
 
     def __mul__(self,factor):
         new_mesh = Mesh (self.lst3d_tris)
