@@ -8,6 +8,9 @@ import numpy as np
 from Utils import utils as ut
 import math as m 
 import PipeLine2D3D as p2D3D
+import sys 
+
+from PygameRender import  DrawTris,clear 
 
 argc = len(sys.argv)
 parse_2d_tris =  True if 'p2' in sys.argv else False
@@ -469,10 +472,11 @@ def runPipeLine(tri:Tris3D,a:Vec3D,b:Vec3D,c:Vec3D,player_head:Vec3D,near:float,
 
 
 class Camera:
-    def __init__(self, player_head: Vec3D, norm_vec, b1:Vec3D, b2:Vec3D,  window: GraphWin, 
-                near=1, far=10,fov=90):
+    def __init__(self, player_head: Vec3D, norm_vec, b1:Vec3D, b2:Vec3D,  height=600,width=600, 
+                near=1, far=10,fov=90,usePygame=False,pixelArray=np.empty(shape=(0),dtype=np.uint8)):
         self.player_head = player_head
 
+        self.usePygame = usePygame
         self.zaw   = 0 
         self.pitch = 0 
         self.tan_fov = 1/m.tan(m.radians(fov/2))
@@ -481,6 +485,7 @@ class Camera:
         self.a = Vec3D(1,0,0)
         self.b = Vec3D(0,1,0)
         self.c = Vec3D(0,0,1)
+        self.pixelArray = pixelArray
         """self.mat_view =  np.array([
             [self.a.x                         ,                         self.c.x,                         self.b.x,0],
             [self.a.z                         ,                         self.c.z,                         self.b.z,0],
@@ -492,17 +497,26 @@ class Camera:
 
 
         self.mid_poi = self.player_head + Vec3D(0,near,0)
-        print("MID POI: ", self.mid_poi)
-        print("Player head: ", self.player_head)
+        print("Use Pygame: ", self.usePygame)
+        if not(self.usePygame):
+            print("MID POI: ", self.mid_poi)
+            print("Player head: ", self.player_head)
+            self.window    = GraphWin("Lib", height=height ,width= width,autoflush=False)
+            self.window.setBackground("black")
+            self.window.setCoords(-1,-1,1,1)
+
+        else:
+            pass
+            
+
         self.drawn_tri = []
         self.norm_vec = norm_vec        
 
-        self.window = window
 
-        print(window.getWidth())
+ 
 
-        self.height = window.getHeight()
-        self.wdith = window.getWidth()
+        self.height = height
+        self.width = width
 
 
     
@@ -592,8 +606,6 @@ class Camera:
                 list_2d_numpy_AC[6*numpy_num_tris_AC+ 5] = tri.p3.y
                 
                 numpy_num_tris_AC += 1 
-
-
         
         if parse_2d_tris:
             with open('AC.txt', 'w+') as fp:
@@ -635,7 +647,11 @@ class Camera:
     def draw_tris_nump (self, lst_tri3D:np.ndarray,wireFrame=True,lighting=True):
 
         self.useNumpy = True
-        lst_2D = p2D3D.RunPipeLines(lst_tri3D,self.a.numpify(),self.b.numpify(),self.c.numpify(),self.player_head.numpify(),self.near,self.q,self.tan_fov)
+
+
+
+        pla = self.player_head.numpify()
+        lst_2D = p2D3D.RunPipeLines(lst_tri3D,self.a.numpify(),self.b.numpify(),self.c.numpify(),pla,self.near,self.q,self.tan_fov)
 
         # print("Player head: ",self.player_head.numpify())
 
@@ -646,23 +662,26 @@ class Camera:
         # print("TOT 2D TRIS: ",tot2DTris, "\n\n\n\n" )
 
 
-        tri_idx= 0
-        while tri_idx < tot2DTris:
-            lst_ps:list[Point] = [] 
-            for point in range(3):
-                lst_ps.append(Point(lst_2D[6*tri_idx + 2*point + 0], lst_2D[6*tri_idx + 2*point + 1] ))
+        #tot2DTris = 0 
 
+        if not( self.usePygame):
+            tri_idx= 0
+            while tri_idx < tot2DTris:
+                lst_ps:list[Point] = [] 
+                for point in range(3):
+                    lst_ps.append(Point(lst_2D[6*tri_idx + 2*point + 0], lst_2D[6*tri_idx + 2*point + 1] ))
 
+                poly = Polygon(lst_ps[0],lst_ps[1],lst_ps[2],lst_ps[0])
+                
+                poly.setFill("white")
+                poly.setOutline("blue")
+                self.drawn_tri.append(poly)
 
-      
-            poly = Polygon(lst_ps[0],lst_ps[1],lst_ps[2],lst_ps[0])
-            
-            poly.setFill("white")
-            poly.setOutline("blue")
-            self.drawn_tri.append(poly)
-
-            poly.draw(self.window)
-            tri_idx+=1    
+                poly.draw(self.window)
+                tri_idx+=1    
+        else:
+        
+            DrawTris(lst_2D,self.pixelArray,self.width,self.height,tot2DTris,outLine=True,FillCol=True)
 
 
 
@@ -680,7 +699,9 @@ class Camera:
         else:
             self.draw_tris_nump(mesh.numpListTri)
     def unDrawTris(self,lighting=True):
-
+        if self.useNumpy and self.usePygame:
+            clear(self.pixelArray,self.width*self.height*3)
+            return
         if self.useNumpy:
             for poly in self.drawn_tri:
                 poly.undraw()      
@@ -868,7 +889,7 @@ class Camera:
     def incrementZ(self, incr):
 
 
-        self.mid_poi.add_z(incr)
+        #self.mid_poi.add_z(incr)
         self.player_head.add_z(incr) 
 
 
@@ -1199,6 +1220,7 @@ class Camera:
 
         self.mid_poi = self.mid_poi.subVec(self.norm_vec) 
 
+
         self.b1.rotateX_(angle)
         self.b2.rotateX_(angle)
 
@@ -1210,6 +1232,7 @@ class Camera:
         vec = magnitude * dir
         self.player_head = self.player_head.addVec(vec)
         self.mid_poi = self.mid_poi.addVec(vec)
+
 
 
     def backward (self,magnitude):
@@ -1239,4 +1262,8 @@ class Camera:
 
         self.mid_poi = self.mid_poi.addVec(vec)
 
-        self.player_head = self.player_head.addVec(vec)
+        #self.player_head = self.player_head.addVec(vec)
+
+        self.player_head.add_x(vec.x)
+        self.player_head.add_y(vec.y)
+        self.player_head.add_z(vec.z)

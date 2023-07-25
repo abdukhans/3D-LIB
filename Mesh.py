@@ -213,7 +213,33 @@ class Mesh:
 
 
 
-    
+    def createNumpObjFromVerts(self):
+
+        self.isNumpy = True
+        tri_idx = 0 
+        self.numpListTri = np.zeros(shape=(len(self.lst3d_tris),3,3),dtype=np.float64)
+        for tri in self.lst3d_tris: 
+            point_idx =0 
+            for vec in tri.getPoints():
+                cord_idx = 0 
+                for cord in vec.numpify():
+
+                    self.numpListTri[tri_idx][point_idx][cord_idx] = cord
+                    cord_idx += 1 
+
+                    
+
+                        
+
+
+                    pass
+                
+                point_idx += 1
+            pass
+
+            tri_idx +=1 
+
+        pass
     def move(self,trans_vec:Vec3D):
         for i in self.lst_vs:
             i.transVec(trans_vec)

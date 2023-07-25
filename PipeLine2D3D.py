@@ -114,7 +114,7 @@ def PipeLine3D(tri:np.ndarray, a:np.ndarray,b:np.ndarray,c:np.ndarray,player_hea
         Note the '+1'  in   2*'num_tris'*16*3*2 + 1  is where the number of 2D 
         triangles will be put.  
 """
-@njit
+@njit()
 def RunPipeLines(Lst_tri:np.ndarray, a:np.ndarray,b:np.ndarray,c:np.ndarray,player_head:np.ndarray,near:float,q:float,tan_fov:float):
 
     global n 

@@ -87,7 +87,7 @@ class Vec3D:
         self.z = m_y*m.sin(m.degrees(degrees))  + m_z*m.cos(m.degrees(degrees))
 
     def add_z (self, z):
-        self.z += z
+        self.z = self.z +  z
 
     def add_y (self,y):
         self.y += y

@@ -94,7 +94,7 @@ def populateTri(tri:np.ndarray, p1:np.ndarray,p2:np.ndarray,p3:np.ndarray):
 
 
 
-@njit
+@njit(cache=False)
 def view(l:np.ndarray,a:np.ndarray,b:np.ndarray,c:np.ndarray,player_head:np.ndarray):
 
         #convention (x,y,z) 

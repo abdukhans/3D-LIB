@@ -18,21 +18,29 @@ from Tri2D import Tris2D
 from Tri3D import Tris3D
 from Utils import utils as ut
 from Mesh import Mesh
-from Camera import Camera, parse_2d_tris,parse_3d_tris
+from Camera import Camera, parse_2d_tris,parse_3d_tris 
+import pygame as pg
+
 
 
 
 use_numpy = 'nump' in sys.argv
-
+use_pygame = 'pygame' in sys.argv
 global calc
 calc = 0 
 global n
 n =  0 
 height = 500
 width  = 500 
-win    = GraphWin("Lib", height=height ,width= width,autoflush=False)
-win.setBackground("black")
-win.setCoords(-1,-1,1,1)
+
+
+# if not(use_pygame):
+#     win    = GraphWin("Lib", height=height ,width= width,autoflush=False)
+#     win.setBackground("black")
+#     win.setCoords(-1,-1,1,1)
+# else:
+#     win = None
+
 
 
 near = 1
@@ -66,8 +74,11 @@ tri11    = Tris3D(v1,v2,v6)
 tri12    = Tris3D(v6,v5,v1)
 tri13    = Tris3D(v8,v7,v1,col="red")
 lst_tris = [tri1,tri2,tri3, tri4,tri5,tri6,tri7,tri8,tri9,tri10,tri11,tri12]
-#lst_tris = [tri6]
-#cube     = Mesh(lst_tris)
+lst_tris = [tri6]
+# cube     = Mesh(lst_tris)
+# cube.move(Vec3D(0,2,0))
+# cube.createNumpObjFromVerts()
+
 cube     = Mesh([],file_path="teapot.obj",use_numpy=use_numpy)
 
 
@@ -75,18 +86,26 @@ cube     = Mesh([],file_path="teapot.obj",use_numpy=use_numpy)
 #cube.move(Vec3D(0,0,0))
 #cube.scale(0.2)
 #cube.rotateX_(-90)
-cam      = Camera(player,norm_vec,b1,b2,win,near=1,fov=90)
+pixelArr = np.zeros(shape=(width*height*3),dtype=np.uint8)
+cam      = Camera(player,norm_vec,b1,b2,height=height,width=width,near=1,fov=90,usePygame=use_pygame,pixelArray=pixelArr)
+
+
+
 
 
 
 def main():
     i = 0
     step = 0.1
-    rot = 0.01
+    rot = 0.001
     
     #print(Vec3D(-1,-1,1).SDistFromPlane(Vec3D(0,1,0),Vec3D(0,-3,0)))
 
     profileMode = True if 'p' in sys.argv else False
+
+    win = cam.window if not(cam.usePygame) else pg.display.set_mode((width,height))
+    clock = pg.time.Clock()
+ 
 
     pos = Vec3D(1,0,4)
     while( True):
@@ -123,11 +142,14 @@ def main():
         x,y,z = 1,1,3
         ang = 0.001
 
-        
-        
+        # print(id(cam.player_head))
+        # cam.player_head.add_z(0.0001)
+        # print(id(cam.player_head))
         # cube.rotateX_(ang)
         # cube.move(-1*pos)
         
+
+        #time.sleep(1)
         # cube.rotateY_(ang)
         # pos+= Vec3D(x/100,y/100,0)
         # cube.move(pos)
@@ -137,17 +159,43 @@ def main():
             break
         else:
             cam.drawMesh(cube,wireFrame=False,lighting=True)
-
+      
         if parse_2d_tris or parse_3d_tris:
             break
 
+
+
+
+      
+
+        
         #cube.move(Vec3D(-x,-y,-z))
 
 
         #cam.printPlayer()
         # if n ==0:
         #     print(len(cam.drawn_tri),"\n")
-        update(60)
+        
+        
+        if not(use_pygame):
+            update(60)
+
+        else:
+
+            
+            win.fill((0,0,0))
+
+            for event in pg.event.get():
+                if event.type == pg.QUIT:
+                   pg.quit()
+                   exit(0)
+        
+
+            surf = pg.image.frombuffer(cam.pixelArray,(width,height),"RGB")
+            win.blit(surf,(0,0))
+            pg.display.update()
+            clock.tick(60)
+            
         # n+= 1
 
        
@@ -155,8 +203,15 @@ def main():
        
         cam.undrawMesh(cube)
         end = t.default_timer()
-        print("FPS: ",str(1/(end - start)), end='\r')
-    
+        fps ="FPS: " + str(1/(end - start))
+
+        if not(use_pygame):
+            win.master.title(fps)
+        else:
+            pg.display.set_caption(fps)
+        
+
+
     if profileMode:
         stats = pstats.Stats(pr)
         """numpFast2.inspect_types()    
@@ -167,8 +222,9 @@ def main():
         stats.reverse_order()
         stats.print_stats()
 
-    
-    win.close()
+     
+    if isinstance(win,GraphWin):
+        win.close()
 
 
 if __name__ == "__main__":
