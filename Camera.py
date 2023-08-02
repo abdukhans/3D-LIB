@@ -519,7 +519,7 @@ class Camera:
         self.width = width
 
 
-    
+        self.DepthBuffer = np.zeros(shape=(height,width),dtype=np.float32)
         
         self.useNumpy = False
 
@@ -581,7 +581,7 @@ class Camera:
         for tri in lst_tri3D:
             
             # Pipeline(tri:Tris3D,a:Vec3D,b:Vec3D,c:Vec3D,player_head:Vec3D,near:float,lighting:bool,wireFrame:bool,window:GraphWin,drawn_tri,sema):
-            #th.Thread(target=Pipeline,args=(tri,self.a,self.b,self.c,self.player_head,self.near,lighting,wireFrame,self.window,self.tan_fov,self.q,self.drawn_tri,bs)).start()
+            # th.Thread(target=Pipeline,args=(tri,self.a,self.b,self.c,self.player_head,self.near,lighting,wireFrame,self.window,self.tan_fov,self.q,self.drawn_tri,bs)).start()
             Pipeline(tri,self.a,self.b,self.c,self.player_head,self.near,lighting,wireFrame,self.window,self.tan_fov,self.q,self.drawn_tri)
         
             #print(len(self.drawn_tri))
@@ -649,13 +649,20 @@ class Camera:
         self.useNumpy = True
 
 
+        self.DepthBuffer = np.zeros(shape=(self.height,self.width),dtype=np.float32)
+        zbuff2D_bc = np.zeros(shape=(len(lst_tri3D)*2*3 + 1),dtype=np.float64)
+        zbuff2D_ac = np.zeros(shape=(2*len(lst_tri3D)*1*3*16 + 1),dtype=np.float64)
+
+
 
         pla = self.player_head.numpify()
-        lst_2D = p2D3D.RunPipeLines(lst_tri3D,self.a.numpify(),self.b.numpify(),self.c.numpify(),pla,self.near,self.q,self.tan_fov)
+        lst_2D = p2D3D.RunPipeLines(lst_tri3D,self.a.numpify(),self.b.numpify(),self.c.numpify(),
+                                    pla,self.near,self.q,self.tan_fov,zbuff2D_bc,zbuff2D_ac)
 
         # print("Player head: ",self.player_head.numpify())
 
 
+        #print("zbuff2D_bc[-1]: " ,zbuff2D_bc[-1])
         tot2DTris = int(lst_2D[-1])
 
         # print("Lst 2D: ", lst_2D)
@@ -680,10 +687,9 @@ class Camera:
                 poly.draw(self.window)
                 tri_idx+=1    
         else:
-        
-            DrawTris(lst_2D,self.pixelArray,self.width,self.height,tot2DTris,outLine=True,FillCol=True)
 
 
+            DrawTris(lst_2D,self.pixelArray,self.width,self.height,tot2DTris,zbuff2D_ac,self.DepthBuffer, outLine=wireFrame,FillCol=True)
 
 
 
@@ -735,8 +741,9 @@ class Camera:
             red    = int(light * 255)
             green  = int(light * 255)
             blue   = int(light * 255)
-            
-            
+
+       
+
             for tri_c in l_c:
                 tri_c.setFill(color_rgb(red,green,blue))
                 tri_c.setOutline(color_rgb(red,green,blue))

@@ -26,12 +26,15 @@ import pygame as pg
 
 use_numpy = 'nump' in sys.argv
 use_pygame = 'pygame' in sys.argv
+use_numpy = True
+use_pygame = True
+
 global calc
 calc = 0 
 global n
 n =  0 
-height = 500
-width  = 500 
+height = 800
+width  = 800 
 
 
 # if not(use_pygame):
@@ -51,7 +54,7 @@ player   = Vec3D(0,p,0)
 norm_vec = Vec3D(0,-1,0)
 b1       = Vec3D(1,0,0)
 b2       = Vec3D(0,0,1)
-v1       = Vec3D(1,1,1) 
+v1       = Vec3D(1,1,2) 
 v2       = Vec3D(1,1,-1)
 v3       = Vec3D(1,-1,-1)
 v4       = Vec3D(1,-1,1)
@@ -75,17 +78,17 @@ tri12    = Tris3D(v6,v5,v1)
 tri13    = Tris3D(v8,v7,v1,col="red")
 lst_tris = [tri1,tri2,tri3, tri4,tri5,tri6,tri7,tri8,tri9,tri10,tri11,tri12]
 lst_tris = [tri6]
-# cube     = Mesh(lst_tris)
-# cube.move(Vec3D(0,2,0))
-# cube.createNumpObjFromVerts()
+cube     = Mesh(lst_tris)
+cube.move(Vec3D(0,2,0))
+cube.createNumpObjFromVerts()
 
 cube     = Mesh([],file_path="teapot.obj",use_numpy=use_numpy)
 
 
 
-#cube.move(Vec3D(0,0,0))
-#cube.scale(0.2)
-#cube.rotateX_(-90)
+# cube.move(Vec3D(0,0,0))
+# cube.scale(0.2)
+# cube.rotateX_(-90)
 pixelArr = np.zeros(shape=(width*height*3),dtype=np.uint8)
 cam      = Camera(player,norm_vec,b1,b2,height=height,width=width,near=1,fov=90,usePygame=use_pygame,pixelArray=pixelArr)
 

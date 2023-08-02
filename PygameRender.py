@@ -248,10 +248,69 @@ def drawLine(x1,y1,x2,y2,pixelArr,width, height,R=255,G=255,B=255,debug=False):
     for cord in lst:
         width_cord = cord[0]
         height_cord = cord[1]
+
         pixelArr[ height_cord*3*width +  3*width_cord + 0 ] = R
         pixelArr[ height_cord*3*width +  3*width_cord + 1 ] = G
         pixelArr[ height_cord*3*width +  3*width_cord + 2 ] = B
 
+
+
+
+@njit
+def drawLineZbuff(x1,y1,x2,y2,pixelArr,width, height,z1:float,z2:float,depthBuffer:np.ndarray,R=255,G=255,B=255,debug=False):
+
+    sx1 = x1
+    sy1 = y1
+
+    sx2 = x2
+    sy2 = y2
+
+    # print(sx1,sy1)
+    # print(sx2,sy2)
+
+
+    dy = sy2 - sy1
+    dx = sx2 - sx1 
+
+
+   
+
+
+    lst = Bresenham(sx1,sy1,sx2,sy2)
+
+    if debug:
+
+        slope = dy/dx if dx !=0  else 999999
+
+        print("SLOPE:" , slope)
+        print(lst)
+
+
+
+    t = 0 
+    num_pix = len(lst)
+    t_step = 1 / num_pix  
+    for cord in lst:
+        
+        cur_z = lerp(z1,z2,t)
+        
+        width_cord = cord[0]
+        height_cord = cord[1]
+
+        #print("z1: " , z1, "\nz2: " , z2,"\ncur_z: ",cur_z , "\ndepthBuffer[height_cord][width_cord]: ",depthBuffer[height_cord][width_cord]  )
+       
+        if cur_z>= depthBuffer[height_cord][width_cord] - 0.09*cur_z :
+
+            #print("z1: " , z1, "\nz2: " , z2,"\ncur_z: ",cur_z , "\n" )
+            
+            pixelArr[ height_cord*3*width +  3*width_cord + 0 ] = R
+            pixelArr[ height_cord*3*width +  3*width_cord + 1 ] = G
+            pixelArr[ height_cord*3*width +  3*width_cord + 2 ] = B
+            depthBuffer[height_cord][width_cord] = cur_z
+
+
+
+        t += t_step 
 
 
 
@@ -305,7 +364,8 @@ def TestEdgeCases(pixelArr:np.ndarray,width,height):
 
 
 @njit
-def DrawTris(Lst_tri:np.ndarray, pixelArr:np.ndarray,width:int,height:int , num_tris:int,outLine=True,FillCol=False,R=255,G=255,B=255):
+def DrawTris(Lst_tri:np.ndarray, pixelArr:np.ndarray,width:int,height:int , 
+             num_tris:int,trianglZbuff:np.ndarray,depthBuffer:np.ndarray,outLine=True,FillCol=False,R=255,G=255,B=255):
     tri_idx = 0 
 
     
@@ -338,26 +398,38 @@ def DrawTris(Lst_tri:np.ndarray, pixelArr:np.ndarray,width:int,height:int , num_
 
 
 
-        s1x = int(lerp(0,width, (p1x+1)/2))
-        s1y = int(lerp(height,0, (p1y+1)/2))
+        s1x = int(lerp(0,width - 1, (p1x+1)/2))
+        s1y = int(lerp(height - 1,0, (p1y+1)/2))
+        s1z = trianglZbuff[3*tri_idx  + 0 ]
 
-        s2x = int(lerp(0,width, (p2x+1)/2))
-        s2y = int(lerp(height,0, (p2y+1)/2))
+        s2x = int(lerp(0,width - 1, (p2x+1)/2))
+        s2y = int(lerp(height - 1,0, (p2y+1)/2))
+        s2z = trianglZbuff[3*tri_idx  + 1 ]
 
-        s3x = int( lerp(0,width, (p3x+1)/2)  )
-        s3y = int( lerp(height,0, (p3y+1)/2 ) )
-
-        
+        s3x = int( lerp(0,width - 1, (p3x+1)/2)  )
+        s3y = int( lerp(height - 1,0, (p3y+1)/2 ) )
+        s3z = trianglZbuff[3*tri_idx  + 2 ]
+    
+          
         if FillCol:
             if s1y > s2y:
                 s1x,s1y,s2x,s2y = s2x,s2y,s1x,s1y
 
+                s1z,s2z =  s2z,s1z  
             if s1y > s3y:
                 s1x,s1y,s3x,s3y = s3x,s3y,s1x,s1y
+                s3z,s2z =  s2z,s3z  
 
             if s2y > s3y:
                 s2x,s2y,s3x,s3y = s3x,s3y,s2x,s2y
+                s2z,s3z =  s3z,s2z  
 
+            # print("s1x: " , s1x )
+            # print("s1y: " , s1y )
+            # print("s2x: " , s2x )
+            # print("s2y: " , s2y )
+            # print("s3x: " , s3x ) 
+            # print("s3y: " , s3y , "------------------------\n" )       
 
             dys2s1 =  s2y - s1y
             dxs2s1 =  s2x - s1x
@@ -372,8 +444,17 @@ def DrawTris(Lst_tri:np.ndarray, pixelArr:np.ndarray,width:int,height:int , num_
             da = 0 
             db = 0 
 
+            t_c_step_inrc =  1 / dys3s1 if  (dys3s1!=0 ) else 0 
+
+           
+            t_c = 0 
+
+
             if (dys2s1 != 0):
             
+
+                t_a_step_inrc = 1 / dys2s1
+                t_a = 0 
                 da = dxs2s1 /dys2s1
 
                 if dys3s1 != 0 :
@@ -381,15 +462,40 @@ def DrawTris(Lst_tri:np.ndarray, pixelArr:np.ndarray,width:int,height:int , num_
 
                 for y in range(s1y,s2y+1,1):
                     start_x:int  =   (s1x + (y - s1y)*da)
-                    end_x:int  =   (s1x + (y - s1y)*db)
+                    end_x:int    =   (s1x + (y - s1y)*db)
+
+                    start_z =  lerp(s1z,s2z,t_a)
+                    end_z   =  lerp(s1z,s3z,t_c) 
+
                     if start_x > end_x:
                         start_x,end_x = end_x , start_x
+                        start_z,end_z  = end_z,start_z  
+
                     #drawLine(start_x,y,end_x,p3y,pixelArr,width,height,R,G,B)
+                    t_a_step_horz_incr = 1 / (end_x - start_x) if  (end_x - start_x !=0 ) else 0 
+                    t_a_horz = 0 
                     for x in range(int(start_x),int(end_x+1)):
-                        pixelArr[width*3*y + 3*x + 0 ] = R
-                        pixelArr[width*3*y + 3*x + 1 ] = G
-                        pixelArr[width*3*y + 3*x + 2 ] = B
-        
+                        
+
+                        cur_z = lerp(start_z , end_z, t_a_horz)
+                        if  cur_z >= depthBuffer[y][x] :
+
+                            pixelArr[width*3*y + 3*x + 0 ] = R
+                            pixelArr[width*3*y + 3*x + 1 ] = G
+                            pixelArr[width*3*y + 3*x + 2 ] = B 
+                            depthBuffer[y][x] = cur_z 
+
+                            # if x == start_x or x == end_x:
+                            #     pixelArr[width*3*y + 3*x + 0 ] = 0
+                            #     pixelArr[width*3*y + 3*x + 1 ] = 0
+                            #     pixelArr[width*3*y + 3*x + 2 ] = B
+
+
+                        t_a_horz+=t_a_step_horz_incr
+
+                    t_a += t_a_step_inrc
+                    t_c += t_c_step_inrc
+
             # Bottom Half: s2y -> s3y
 
             da = 0 
@@ -400,25 +506,55 @@ def DrawTris(Lst_tri:np.ndarray, pixelArr:np.ndarray,width:int,height:int , num_
                 if dys3s1!=0:
                     db = dxs3s1 / dys3s1
 
+                t_b_step_inrc = 1 / dys3s2 if(dys3s2 != 0) else 0
+                t_b = 0 
+
+
                 for y in range(s2y,s3y+1,1):
                     start_x:int =   (s2x + (y - s2y)*da)
                     end_x:int     =   (s1x + (y - s1y)*db)
+
+                    start_z = lerp(s2z,s3z,t_b)
+                    end_z =   lerp(s1z,s3z,t_c)
+
                     if start_x > end_x:
                         start_x,end_x = end_x , start_x
+                        start_z,end_z  = end_z,start_z
                     #drawLine(start_x,y,end_x,p3y,pixelArr,width,height,R,G,B)
+
+                    t_b_step_horz_incr = 1 / (end_x - start_x) if  (end_x - start_x !=0 ) else 0 
+                    t_b_horz  = 0 
                     for x in range(int(start_x),int(end_x+1)):
 
                         
-                        pixelArr[width*3*y + 3*x + 0 ] = R
-                        pixelArr[width*3*y + 3*x + 1 ] = G
-                        pixelArr[width*3*y + 3*x + 2 ] = B
+                        cur_z = lerp(start_z , end_z, t_b_horz)
+                        if  cur_z >= depthBuffer[y][x] :
+                            pixelArr[width*3*y + 3*x + 0 ] = R
+                            pixelArr[width*3*y + 3*x + 1 ] = G
+                            pixelArr[width*3*y + 3*x + 2 ] = B
+                            depthBuffer[y][x]  = cur_z
 
+                            
+
+                            # if x == start_x or x == end_x:
+                            #     pixelArr[width*3*y + 3*x + 0 ] = 0
+                            #     pixelArr[width*3*y + 3*x + 1 ] = 0
+                            #     pixelArr[width*3*y + 3*x + 2 ] = B
+
+                        t_b_horz += t_b_step_horz_incr
+
+                    t_b += t_b_step_inrc 
+                    t_c += t_c_step_inrc
 
 
 
 
                 pass
                 
+        if outLine:
+            drawLineZbuff(s1x,s1y,s2x,s2y,pixelArr,width,height,s1z,s2z,depthBuffer,R=0,G=0)
+            drawLineZbuff(s2x,s2y,s3x,s3y,pixelArr,width,height,s2z,s3z,depthBuffer,R=0,G=0)
+            drawLineZbuff(s1x,s1y,s3x,s3y,pixelArr,width,height,s1z,s3z,depthBuffer,R=0,G=0)
 
         # line1 = "p1x: {:>7} p1y: {:>7}".format(round(p1x,3),round(p1y,3))
         # line2 = "p2x: {:>7} p2y: {:>7}".format(round(p2x,3),round(p2y,3))
@@ -429,9 +565,9 @@ def DrawTris(Lst_tri:np.ndarray, pixelArr:np.ndarray,width:int,height:int , num_
         # print(line2)
         # print(line3)
         # print("\n")
-        drawLine(p1x,p1y,p2x,p2y,pixelArr,width,height,R=0,G=0)
-        drawLine(p2x,p2y,p3x,p3y,pixelArr,width,height,R=0,G=0)
-        drawLine(p3x,p3y,p1x,p1y,pixelArr,width,height,R=0,G=0)
+        # drawLine(p1x,p1y,p2x,p2y,pixelArr,width,height,R=0,G=0)
+        # drawLine(p2x,p2y,p3x,p3y,pixelArr,width,height,R=0,G=0)
+        # drawLine(p3x,p3y,p1x,p1y,pixelArr,width,height,R=0,G=0)
         tri_idx +=1 
 
 

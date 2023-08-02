@@ -35,7 +35,9 @@ def getMidPoi(tri:np.ndarray):
     return sum_vec /  3
 
 @njit
-def PipeLine3D(tri:np.ndarray, a:np.ndarray,b:np.ndarray,c:np.ndarray,player_head:np.ndarray,near:float,q:float,tan_fov:float):
+def PipeLine3D(tri:np.ndarray, a:np.ndarray,b:np.ndarray,c:np.ndarray,
+            player_head:np.ndarray,near:float,q:float,tan_fov:float, 
+            zbuff2D_bc:np.ndarray):
 
     # return np.empty(shape=(0,3,2),dtype=np.float64)
 
@@ -44,6 +46,8 @@ def PipeLine3D(tri:np.ndarray, a:np.ndarray,b:np.ndarray,c:np.ndarray,player_hea
 
    
     norm_tri = p3d.getNorm(tri)
+
+    
 
     ph_sub_mid_poi = np.subtract(player_head,getMidPoi(tri)  )
 
@@ -67,6 +71,7 @@ def PipeLine3D(tri:np.ndarray, a:np.ndarray,b:np.ndarray,c:np.ndarray,player_hea
 
 
 
+
     # if n== 0 :
     #     print(view_tri)
     # else:
@@ -76,7 +81,20 @@ def PipeLine3D(tri:np.ndarray, a:np.ndarray,b:np.ndarray,c:np.ndarray,player_hea
     res_buff  = np.empty(shape=(len(tri_clipped_3D),3,2),dtype=np.float64)
 
     res_idx = 0  
+    z_buff_start_idx = zbuff2D_bc[-1] 
+
+
     for tri_c in tri_clipped_3D:
+
+        z_buff_idx = int(3*(z_buff_start_idx +  res_idx))
+
+
+        
+        zbuff2D_bc[z_buff_idx + 0 ] = 1/tri_c[0][1] 
+        zbuff2D_bc[z_buff_idx + 1 ] = 1/tri_c[1][1] 
+        zbuff2D_bc[z_buff_idx + 2 ] = 1/tri_c[2][1] 
+
+
         tri2D = p3d.projTri(tri_c,tan_fov,q,near)
 
 
@@ -88,9 +106,11 @@ def PipeLine3D(tri:np.ndarray, a:np.ndarray,b:np.ndarray,c:np.ndarray,player_hea
         # n+=1 
         res_buff[res_idx] = tri2D
        
+        
         res_idx +=1 
 
-    
+   
+    zbuff2D_bc[-1] += res_idx
     return res_buff
 
 
@@ -114,22 +134,28 @@ def PipeLine3D(tri:np.ndarray, a:np.ndarray,b:np.ndarray,c:np.ndarray,player_hea
         Note the '+1'  in   2*'num_tris'*16*3*2 + 1  is where the number of 2D 
         triangles will be put.  
 """
-@njit()
-def RunPipeLines(Lst_tri:np.ndarray, a:np.ndarray,b:np.ndarray,c:np.ndarray,player_head:np.ndarray,near:float,q:float,tan_fov:float):
-
+@njit
+def RunPipeLines(Lst_tri:np.ndarray, a:np.ndarray,b:np.ndarray,c:np.ndarray,
+                player_head:np.ndarray,near:float,q:float,tan_fov:float, 
+                zbuff2D_bc:np.ndarray,zbuff2D_ac:np.ndarray):
     global n 
     num_tris    = len(Lst_tri)
     res_buff_2d = np.empty(shape=(2*num_tris,3,2),dtype=np.float64)
     res_buff_2d_ac = np.empty(shape=(2*num_tris*16*3*2 + 1 ),dtype=np.float64)
     res_buff_idx = 0 
+
+    
     for tri in Lst_tri:
-        lst_2D_tris = PipeLine3D(tri,a,b,c,player_head,near,q,tan_fov)
+        lst_2D_tris = PipeLine3D(tri,a,b,c,player_head,near,q,tan_fov,zbuff2D_bc)
         num_2D_tris = len(lst_2D_tris)
         res_buff_2d[res_buff_idx:res_buff_idx + num_2D_tris] = lst_2D_tris
         res_buff_idx += num_2D_tris
 
-
     #print("res buff idx: ", res_buff_idx)
+
+
+
+    #print(zbuff2D_bc[0:3*res_buff_idx])
 
 
     if test_all:
@@ -149,7 +175,7 @@ def RunPipeLines(Lst_tri:np.ndarray, a:np.ndarray,b:np.ndarray,c:np.ndarray,play
     tot_num_2D_tris = 0 
     for idx in  range (res_buff_idx):
         tri = res_buff_2d[idx]
-        clipped_tri = p2d.clip2D(tri.reshape(-1))
+        clipped_tri = p2d.clip2D(tri.reshape(-1),idx,zbuff2D_bc,zbuff2D_ac)
         num_2D_tris = int(clipped_tri[-1   ])
         res_buff_2d_ac[res_buff_2d_ac_idx: res_buff_2d_ac_idx + 6*num_2D_tris] = clipped_tri[0:6*num_2D_tris]
         if n < -1 and test_all:

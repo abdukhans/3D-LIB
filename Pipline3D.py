@@ -310,7 +310,7 @@ def clip3D(tri:np.ndarray,near:float):
 
     plane_norm = np.array([0.0,1.0,0.0],dtype=np.float64)
     for p in lst_p:
-        if SDistFromPlane3(p,plane_norm,plane_p) < 0:
+        if SDistFromPlane3(p,plane_norm,plane_p) <= 0:
             
             for entry in range(3):
                 lst_vios[num_vios][entry] = p[entry] 
