@@ -473,8 +473,10 @@ def runPipeLine(tri:Tris3D,a:Vec3D,b:Vec3D,c:Vec3D,player_head:Vec3D,near:float,
 
 class Camera:
     def __init__(self, player_head: Vec3D, norm_vec, b1:Vec3D, b2:Vec3D,  height=600,width=600, 
-                near=1, far=10,fov=90,usePygame=False,pixelArray=np.empty(shape=(0),dtype=np.uint8)):
+                near=1, far=800,fov=90,usePygame=False,pixelArray=np.empty(shape=(0),dtype=np.uint8)):
         self.player_head = player_head
+
+    
 
         self.usePygame = usePygame
         self.zaw   = 0 
@@ -482,6 +484,7 @@ class Camera:
         self.tan_fov = 1/m.tan(m.radians(fov/2))
         self.q       = far/(far- near)  
         self.near    = near
+        self.far = far
         self.a = Vec3D(1,0,0)
         self.b = Vec3D(0,1,0)
         self.c = Vec3D(0,0,1)
@@ -644,20 +647,24 @@ class Camera:
                 fp.write("\n".join(str(item) for (idx, item) in enumerate(list_3d_numpy_BC) if idx < 9*numpy_num_tris_3BC ))
 
 
-    def draw_tris_nump (self, lst_tri3D:np.ndarray,wireFrame=True,lighting=True):
+    def draw_tris_nump (self, lst_tri3D:np.ndarray,lstUvTris:np.ndarray,textBuff:np.ndarray,wireFrame=True,FillCol=True,cullFace=True,lighting=True):
 
         self.useNumpy = True
 
 
-        self.DepthBuffer = np.zeros(shape=(self.height,self.width),dtype=np.float32)
-        zbuff2D_bc = np.zeros(shape=(len(lst_tri3D)*2*3 + 1),dtype=np.float64)
-        zbuff2D_ac = np.zeros(shape=(2*len(lst_tri3D)*1*3*16 + 1),dtype=np.float64)
+        self.DepthBuffer = np.zeros(shape=(self.height,self.width),dtype=np.longdouble)
 
+        # self.DepthBuffer =np.ones(shape=(self.height,self.width),dtype=np.longdouble)
+        zbuff2D_bc = np.zeros(shape=(len(lst_tri3D)*2*3 + 1),dtype=np.longdouble)
+        zbuff2D_ac = np.zeros(shape=(2*len(lst_tri3D)*1*3*16 + 1),dtype=np.longdouble)
 
+        
+        uvTrisResBuff2D_AC = np.zeros(shape=(2*len(lst_tri3D)*16,3,2),dtype = np.float64)
 
         pla = self.player_head.numpify()
         lst_2D = p2D3D.RunPipeLines(lst_tri3D,self.a.numpify(),self.b.numpify(),self.c.numpify(),
-                                    pla,self.near,self.q,self.tan_fov,zbuff2D_bc,zbuff2D_ac)
+                                    pla,self.near,self.q,self.tan_fov,zbuff2D_bc,zbuff2D_ac,lstUvTris, uvTrisResBuff2D_AC,
+                                    cullFace)
 
         # print("Player head: ",self.player_head.numpify())
 
@@ -687,9 +694,7 @@ class Camera:
                 poly.draw(self.window)
                 tri_idx+=1    
         else:
-
-
-            DrawTris(lst_2D,self.pixelArray,self.width,self.height,tot2DTris,zbuff2D_ac,self.DepthBuffer, outLine=wireFrame,FillCol=True)
+            DrawTris(lst_2D,self.pixelArray,self.width,self.height,tot2DTris,zbuff2D_ac,self.DepthBuffer,uvTrisResBuff2D_AC,textBuff,self.q, self.near, outLine=wireFrame,FillCol=FillCol)
 
 
 
@@ -698,12 +703,12 @@ class Camera:
         pass
 
 
-    def drawMesh (self,mesh: Mesh, wireFrame=True,lighting=True ):
+    def drawMesh (self,mesh: Mesh, wireFrame=True,lighting=True , FillCol=True , cullFace=True):
         if not (mesh.isNumpy):
             self.draw_tris(mesh.lst3d_tris,wireFrame,lighting)
 
         else:
-            self.draw_tris_nump(mesh.numpListTri)
+            self.draw_tris_nump(mesh.numpListTri,mesh.UVtris,mesh.TextBuff,cullFace=cullFace,FillCol=FillCol,wireFrame=wireFrame)
     def unDrawTris(self,lighting=True):
         if self.useNumpy and self.usePygame:
             clear(self.pixelArray,self.width*self.height*3)
@@ -1188,21 +1193,21 @@ class Camera:
         self.c.rotateZ_(angle)
 
 
-        self.norm_vec.rotateZ_(angle)
+        # self.norm_vec.rotateZ_(angle)
 
 
-        Q = self.mid_poi.subVec(self.player_head)
+        # Q = self.mid_poi.subVec(self.player_head)
 
-        Q.rotateZ_(angle)
+        # Q.rotateZ_(angle)
 
-        self.mid_poi = self.player_head.addVec(Q) 
+        # self.mid_poi = self.player_head.addVec(Q) 
 
-        self.zaw  += angle 
+        # self.zaw  += angle 
 
 
 
-        self.b1.rotateZ_(angle)
-        self.b2.rotateZ_(angle)
+        # self.b1.rotateZ_(angle)
+        # self.b2.rotateZ_(angle)
 
         return
 

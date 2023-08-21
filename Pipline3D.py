@@ -3,6 +3,7 @@ from numba import njit
 import math as m
 import sys 
 import matplotlib.pyplot as plt
+from Utils import utils as ut
 
 @njit
 def dotProd3(v1,v2):
@@ -70,6 +71,9 @@ def vectMatMul(vect:np.ndarray, matrix:np.ndarray,size:int) -> np.ndarray:
 
 
 
+
+
+
 """
 
     tri      : is the numpy array object you want to store a 3D triangle into.
@@ -92,9 +96,36 @@ def populateTri(tri:np.ndarray, p1:np.ndarray,p2:np.ndarray,p3:np.ndarray):
         for entry in range(3):
             tri[row][entry] = cur[entry]
 
+@njit
+def populateUVTri(tri:np.ndarray, p1:np.ndarray,p2:np.ndarray,p3:np.ndarray):
+    for row in range(3):
+        if row == 0:
+            cur = p1
+        elif row == 1:
+            cur = p2
+        else:
+            cur = p3
+
+        for entry in range(2):
+            tri[row][entry] = cur[entry]
 
 
-@njit(cache=False)
+@njit
+def populateUVTri(tri:np.ndarray, p1:np.ndarray,p2:np.ndarray,p3:np.ndarray):
+    for row in range(3):
+        if row == 0:
+            cur = p1
+        elif row == 1:
+            cur = p2
+        else:
+            cur = p3
+
+        for entry in range(2):
+            tri[row][entry] = cur[entry]
+
+
+
+@njit
 def view(l:np.ndarray,a:np.ndarray,b:np.ndarray,c:np.ndarray,player_head:np.ndarray):
 
         #convention (x,y,z) 
@@ -176,7 +207,7 @@ def addVec3(v1:np.ndarray,v2:np.ndarray):
 
 
 @njit
-def FindIntersectPoi3D(plane_n:np.ndarray, plane_p:np.ndarray,line_start:np.ndarray, line_end:np.ndarray):
+def FindIntersectPoi3D(plane_n:np.ndarray, plane_p:np.ndarray,line_start:np.ndarray, line_end:np.ndarray ,tL:np.ndarray ):
     plane_n = norm(plane_n)
     #print("d " ,plane_n)
     plane_d:float = -dotProd3(plane_n,plane_p)
@@ -185,6 +216,8 @@ def FindIntersectPoi3D(plane_n:np.ndarray, plane_p:np.ndarray,line_start:np.ndar
 
     #print("ad", ad + 2 )
     t = (-plane_d - ad) / (bd - ad)
+
+    tL[0] = t 
 
     lineStartToEnd = np.subtract(line_end,line_start)
     #print("t: ", lineStartToEnd)    
@@ -243,6 +276,12 @@ def getNorm(tri:np.ndarray):
 def populateTriTensor(tri_tensor:np.ndarray,tri:np.ndarray,idx:int):
     tri_ins = tri_tensor[idx]
     populateTri(tri_ins,tri[0],tri[1],tri[2])
+
+
+@njit
+def populateUVTriTensor(tri_tensor:np.ndarray,tri:np.ndarray,idx:int):
+    tri_ins = tri_tensor[idx]
+    populateUVTri(tri_ins,tri[0],tri[1],tri[2])
     
 
 
@@ -252,21 +291,31 @@ def populateTriTensor(tri_tensor:np.ndarray,tri:np.ndarray,idx:int):
 
 
 """
-    tri      : this is a 3 by 3 numpy array that is the triangle you want to clip
-    near     : the near plane value
+    tri       : this is a 3 by 3 numpy array that is the triangle you want to clip
 
+    uvCords   : this is the uv cords of each point in the trianlge and is a 3 by 2 matrix
+
+    uvCordsAc : this is the resulting buffer of uv cordinates that
+                will accurately capture the new uv-cordinates in the 
+                clipped triangle buffer 
+
+    near      : the near plane value
+
+    NOTE: We assume that trianlges are already in view space
     RET   :
             Returns  a 3 dimensional tensor whose elements are 3 by 3 matrices corresponding
             to new 3D triangles
 """
 @njit
-def clip3D(tri:np.ndarray,near:float):
+def clip3D(tri:np.ndarray,uvCords:np.ndarray,uvCordsAc:np.ndarray,near:float):
 
 
     # p1     = np.array([tri[0],tri[1],tri[2]],dtype=np.float64)
     # p2     = np.array([tri[3],tri[4],tri[5]],dtype=np.float64)
     # p3     = np.array([tri[6],tri[7],tri[8]],dtype=np.float64)
 
+
+    # TODO : Make this bit of code less redundant namely try to get rid of "lst_p" 
 
     p1     = np.array([tri[0][0],tri[0][1],tri[0][2]],dtype=np.float64)
     p2     = np.array([tri[1][0],tri[1][1],tri[1][2]],dtype=np.float64)
@@ -299,6 +348,12 @@ def clip3D(tri:np.ndarray,near:float):
     lst_vios = np.empty(shape=(3,3),dtype=np.float64)
     lst_good = np.empty(shape=(3,3),dtype=np.float64)
 
+    lst_good_ind = np.zeros(shape=(3) ,dtype=np.int32)
+    lst_vios_ind = np.zeros(shape=(3) ,dtype=np.int32)
+
+
+  
+
     # lst_vios[3] = 0 
     # lst_good[3] = 0 
 
@@ -309,26 +364,44 @@ def clip3D(tri:np.ndarray,near:float):
 
 
     plane_norm = np.array([0.0,1.0,0.0],dtype=np.float64)
+    point_idx = 0
     for p in lst_p:
         if SDistFromPlane3(p,plane_norm,plane_p) <= 0:
-            
             for entry in range(3):
                 lst_vios[num_vios][entry] = p[entry] 
 
-            num_vios+=1 
+    
+            lst_vios_ind [num_vios] = point_idx
+            num_vios += 1 
 
         else:
             for entry in range(3):
                 lst_good[num_good][entry] = p[entry] 
 
+
+            lst_good_ind [num_good] = point_idx
+
+
             num_good +=1  
+
+        point_idx += 1 
 
 
     # epsilon value for comparing norms
     eps = 0.01
     if num_vios == 0:
         res_buff = np.empty(shape=(1,3,3),dtype=np.float64)        
-        populateTriTensor(res_buff,tri,0)
+        populateTriTensor(res_buff,tri,0)      
+
+
+
+        uvTri = np.empty(shape=(3,2))
+
+        if tri[0][1] < 0 or tri[1][1] < 0 or tri[2][1] < 0:
+            print("TRI: " , [tri[i][1] for i in range(3) ])
+        populateUVTri(uvTri,uvCords[0]/tri[0][1],uvCords[1]/tri[1][1],uvCords[2]/tri[2][1])
+        populateUVTriTensor(uvCordsAc,uvTri,0)
+
 
         # if idx == inspect:
         #     pass
@@ -337,21 +410,41 @@ def clip3D(tri:np.ndarray,near:float):
         return res_buff
     elif num_vios == 1:
 
-        vio_p = lst_vios[0]
+        vio_p    = lst_vios[0]
+        uv_vio_p =   uvCords[int(lst_vios_ind[0])]
+
 
         pg1 = lst_good[0]
+        uv_pg1 =  uvCords[int(lst_good_ind[0])]
+
+        
         pg2 = lst_good[1]
+        uv_pg2 =  uvCords[int(lst_good_ind[1])]
 
 
-        if pg1[2] < pg2[2]:            
+        """
+            NOTE: Currently the 'uv' values are not divided by the "y" component
+                  All apropriate divisions must be done at the end when 
+                  we put the new 'uv' values in the 'uvCordsAc' 
+        """
+
+
+
+        if pg1[2] < pg2[2]:      
+            
             pg1,pg2 = pg2,pg1
+            uv_pg1,uv_pg2 = uv_pg2,uv_pg1
 
-        n_poi1 = FindIntersectPoi3D(plane_norm, plane_p,vio_p, pg1)
-        n_poi2 = FindIntersectPoi3D(plane_norm, plane_p,vio_p, pg2)
+            # lst_good_ind[0],lst_good_ind[1] = lst_good_ind[1],lst_good_ind[0] 
+
+
+        t1 = np.zeros (shape=(1) , dtype = np.float64)
+        t2 = np.zeros (shape=(1) , dtype = np.float64)
+        n_poi1 = FindIntersectPoi3D(plane_norm, plane_p, pg1 , vio_p , t1)
+        n_poi2 = FindIntersectPoi3D(plane_norm, plane_p, pg2 , vio_p , t2)
 
 
         n_tri1 = np.empty(shape=(3,3),dtype=np.float64)
-
         n_tri2 = np.empty(shape=(3,3),dtype=np.float64)
 
         # for row in range(3):
@@ -364,10 +457,25 @@ def clip3D(tri:np.ndarray,near:float):
         #     for entry in range(3):
         #         n_tri1[row][entry] = cur[entry]
 
+       
+        
+        n1_uv = ut.lerp(uv_pg1, uv_vio_p,t1[0])
+        n2_uv = ut.lerp(uv_pg2, uv_vio_p,t2[0])
     
 
         populateTri(n_tri1,n_poi1,pg1,pg2)
+        uvTri1 = np.empty(shape=(3,2),dtype=np.float64)
+        uvTri1[0] = n1_uv / n_poi1[1]
+        uvTri1[1] = uv_pg1/ pg1[1]
+        uvTri1[2] = uv_pg2/ pg2[1]
+
+            
+
         populateTri(n_tri2,n_poi1,n_poi2,pg2)
+        uvTri2 = np.empty(shape=(3,2),dtype= np.float64)
+        uvTri2[0] = n1_uv  / n_poi1[1]
+        uvTri2[1] = n2_uv  / n_poi2[1]
+        uvTri2[2] = uv_pg2 / pg2[1]
 
 
         n_tri1_norm = getNorm(n_tri1)
@@ -376,12 +484,22 @@ def clip3D(tri:np.ndarray,near:float):
         
         if not(isEqual(o_norm,n_tri1_norm,eps)):
             populateTri(n_tri1,pg1,n_poi1,pg2)
-
+            #uvTri1 = np.empty(shape=(3,2))
+            uvTri1[0] = uv_pg1/ pg1[1]
+            uvTri1[1] = n1_uv / n_poi1[1]
+            uvTri1[2] = uv_pg2/ pg2[1]
+            #populateUVTriTensor(uvCordsAc,uvTri1,0)
 
         if not(isEqual(o_norm,n_tri2_norm,eps)):
             populateTri(n_tri2,n_poi2,n_poi1,pg2)
+            uvTri2[0] = n2_uv / n_poi2[1]
+            uvTri2[1] = n1_uv / n_poi1[1]
+            uvTri2[2] = uv_pg2/ pg2[1]
         
+        populateUVTriTensor(uvCordsAc,uvTri1,0)
+        populateUVTriTensor(uvCordsAc,uvTri2,1)
 
+    
         res_buff = np.empty(shape=(2,3,3),dtype=np.float64)
         populateTriTensor(res_buff,n_tri1,0)
         populateTriTensor(res_buff,n_tri2,1)
@@ -392,20 +510,50 @@ def clip3D(tri:np.ndarray,near:float):
     elif num_vios ==2:
 
         vio_p1 = lst_vios[0]
+        uv_vp1  = uvCords[int(lst_vios_ind[0])]
+
         vio_p2 = lst_vios[1]
-        n_poi1 = FindIntersectPoi3D(plane_norm, plane_p,vio_p1, lst_good[0])
-        n_poi2 = FindIntersectPoi3D(plane_norm, plane_p,vio_p2, lst_good[0])
+        uv_vp2  = uvCords[int(lst_vios_ind[1])]
+
+        gp     = lst_good[0]
+        uv_gp  = uvCords[int(lst_good_ind[0])]
+
+
+
+        t1 = np.zeros (shape=(1) , dtype = np.float64)
+        t2 = np.zeros (shape=(1) , dtype = np.float64)
+
+        n_poi1 = FindIntersectPoi3D(plane_norm, plane_p,gp, vio_p1 , t1)
+        n_poi2 = FindIntersectPoi3D(plane_norm, plane_p,gp, vio_p2 ,t2)
 
         n_tri1 = np.zeros(shape=(3,3),dtype=np.float64)
 
-        populateTri(n_tri1,n_poi1,n_poi2,lst_good[0])
+
+        n1_uv = ut.lerp(uv_gp,uv_vp1,t1[0])
+        n2_uv = ut.lerp(uv_gp,uv_vp2,t2[0])
+
+        populateTri(n_tri1,n_poi1,n_poi2,gp)    
+        uvTri = np.empty(shape=(3,2),dtype = np.float64)
+        uvTri[0] = n1_uv / n_poi1[1]
+        uvTri[1] = n2_uv / n_poi2[1]
+        uvTri[2] = uv_gp / gp[1]
+
+
+
+
         n_tri1_norm = getNorm(n_tri1)
         if not(isEqual(n_tri1_norm,o_norm,eps)):
             populateTri(n_tri1,n_poi2,n_poi1,lst_good[0])
+            uvTri[0] = n2_uv / n_poi2[1]
+            uvTri[1] = n1_uv / n_poi1[1]
+     
+
+
         
         res_buff = np.zeros(shape=(1,3,3),dtype=np.float64)
         
         populateTriTensor(res_buff,n_tri1,0)
+        populateUVTriTensor(uvCordsAc,uvTri,0)
         # if idx == inspect:
         #     n_tri1[0][0]= 1.1
         #     print(n_tri1)
@@ -422,16 +570,17 @@ def clip3D(tri:np.ndarray,near:float):
 @njit
 def perspectiveProj(vec:np.ndarray,tan_fov:float,q:float,near:float):
     mat_proj = np.array([
-            [tan_fov,            0,                     0,0],
-            [   0        ,tan_fov,0                      ,0],
-            [           0,           0,q                 ,1],
-            [           0,           0,-near*q     ,0]
+            [tan_fov,            0,          0,      0],
+            [   0        ,tan_fov ,0          ,      0],
+            [           0,       0,q          ,      1],
+            [           0,       0,-near*q    ,      0]
         ])
     vect      = np.array([vec[0],vec[2],vec[1],1.0],dtype=np.float64)
     vect_proj = vectMatMul(vect,mat_proj,4)
+    
     #print("vect: ",vect)
     #print("Vect proj: ",vect_proj)
-    perspective_vect = vect_proj/vect_proj[3] 
+    perspective_vect = near*vect_proj/vect_proj[3] 
     #print("Perspective proj: ",perspective_vect)
     return perspective_vect
 

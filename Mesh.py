@@ -1,14 +1,72 @@
 import numpy as np
+from numba import njit
 from Vec3D import Vec3D
 from Tri3D import Tris3D
+from Utils import utils as u 
+import math as m 
+import Textures as tx 
+
+@njit
+def rotateNumpLstTris(degrees:float,vecToRotateAround:np.ndarray,lst:np.ndarray):
+
+
+    cos_theta = m.cos(m.radians(degrees))
+    sin_theta  = m.sin(m.radians(degrees))  
+
+
+    k = vecToRotateAround
+    tri_idx = 0 
+
+    print(lst.shape)
+    for tri in lst:
+
+        point_idx = 0 
+        for v in tri:
+            
+            rotatedTri = v*cos_theta + u.crossProd3(k,v)*sin_theta+\
+                         k*((u.dotProd3(k,v,))*(1-cos_theta))
+
+            #print(rotatedTri)
+            lst[tri_idx][point_idx] =  rotatedTri[0:3]
+
+            
+
+
+            
+
+            
+
+            point_idx += 1
+            pass
+        
+        tri_idx += 1 
+        pass    
+
+
+
+    pass
 
 class Mesh:
-    def __init__(self, lst3d_tris:list[Tris3D],file_path="",use_numpy=False):
+    def __init__(self, lst3d_tris:list[Tris3D],file_path="",texturePath="",use_numpy=False):
         self.lst3d_tris = lst3d_tris
         self.lst_vs:set = set()
         self.numpListTri = np.zeros(shape=(0,3,3),dtype=np.float64)
+        self.UVBuff = np.zeros(shape=(len(lst3d_tris) *2 ) ,  dtype=np.float64)
+        self.UVCoords = np.zeros(shape=(0, 2 ) ,  dtype=np.float64)
+
+
+        self.TextBuff = np.zeros(shape=(0,0,3), dtype= np.uint8)
+
+        if texturePath != "":
+            self.TextBuff = tx.makeNumpTexture(texturePath)
+
+        self.useTex =  False
+        
+        self.UVtris = np.zeros(shape=(0, 3,2 ) ,  dtype=np.float64)
+
         for i in self.lst3d_tris:
-            """if i.p1 not in self.lst3d_tris:
+            """
+            if i.p1 not in self.lst3d_tris:
                 self.lst_vs.add(i.p1)
             if i.p2 not in self.lst3d_tris:
                 self.lst_vs.add(i.p2)
@@ -75,6 +133,8 @@ class Mesh:
             num_vert_read = 0 
             floats = []
             idx = 0 
+
+            tex_idx = 0 
             #print(lst_format)
             while idx < len (lst_format):
 
@@ -83,12 +143,23 @@ class Mesh:
                 str_elm_f = str_elm.split(" ")
                 #print(str_elm_f)
 
-                if str_elm_f[0] == "v":
+                if str_elm_f[0][0:2] == "v ":
                     lst_verts.append(Vec3D( float(str_elm_f[1] ), float(str_elm_f[2]) , float(str_elm_f[3])))
+                if str_elm_f[0][0:2] == "vt":
+
+
+                    if not(self.useTex):
+                        self.useTex = True
+                    self.UVCoords[tex_idx][0] = float(str_elm_f[1] )
+                    self.UVCoords[tex_idx][1] = float(str_elm_f[2] )
+                    tex_idx+=1
+
+
+
                 
                 idx += 1
 
-            #print(len(lst_verts))
+            # print(len(lst_verts))
             idx = 0 
             # global parse_3d_tris
             # global numpy_num_tris_3BC
@@ -100,6 +171,8 @@ class Mesh:
                 str_elm_f = str_elm.split(" ")
                 #print(str_elm_f)
                 if str_elm_f[0] == "f":
+
+
                     id1 = int(str_elm_f[1])
                     id2 = int (str_elm_f[2])
                     id3 = int(str_elm_f[3])
@@ -158,17 +231,46 @@ class Mesh:
             num_vert_read = 0 
             floats = []
             idx = 0 
+            tex_idx = 0 
             #print(lst_format)
             while idx < len (lst_format):
 
                 str_elm = lst_format[idx]
                 
-                str_elm_f = str_elm.split(" ")
+                str_elm_f = str_elm.split()
+                
                 #print(str_elm_f)
 
-                if str_elm_f[0] == "v":
-                    lst_verts.append(Vec3D( float(str_elm_f[1] ), float(str_elm_f[2]) , float(str_elm_f[3])))
+                vert_attribs = [ i.split("/") for i in str_elm_f ]
+
+                #  print(vert_attribs)
+
+
+                len_str = len(str_elm_f[0])
+
+                #print(str_elm_f[0])
+
+                #print(len_str)
+
+                if len_str == 1:
+                    if str_elm_f[0]== "v":
+                        
+                        #print("1: ",vert_attribs)
+                        lst_verts.append(Vec3D( float(vert_attribs[1][0]  ), float(vert_attribs[2][0] ) , float(vert_attribs[3][0] )))
                 
+                elif len_str == 2:
+                    if str_elm_f[0]== "vt":
+
+                        #print("2: ",vert_attribs)
+
+                        if not(self.useTex):
+                            self.useTex = True
+
+                        if str_elm_f[1] != "" and    str_elm_f[2] != "": 
+                            tex_cord = np.array([[float(str_elm_f[1] ),float(str_elm_f[2] )]],dtype=np.float64)
+                            self.UVCoords = np.append(self.UVCoords,tex_cord ,axis=0 )
+                        
+                            tex_idx += 1
                 idx += 1
 
             #print(len(lst_verts))
@@ -177,42 +279,170 @@ class Mesh:
             # global numpy_num_tris_3BC
             # numpy_num_tris_3BC = 0
                     
+
+            
+            
+
             while idx < len (lst_format):
-                str_elm = lst_format[idx]                
-                str_elm_f = str_elm.split(" ")
-                #print(str_elm_f)
-                if str_elm_f[0] == "f":
-                    id1 = int(str_elm_f[1])
-                    id2 = int (str_elm_f[2])
-                    id3 = int(str_elm_f[3])
+                str_elm = lst_format[idx]
+                str_elm_f = str_elm.split()
+
+
+
+                vert_attribs = [ i.split("/") for i in str_elm_f ]
+
+                if len(str_elm_f[1:]) == 3:       
+                    if str_elm_f[0] == "f":
+
+                        id1 = int(vert_attribs[1][0])
+                        id2 = int(vert_attribs[2][0])
+                        id3 = int(vert_attribs[3][0])
+                        if idx %1 == 0:
+                            v1 = lst_verts[id1 - 1]
+                            v2 = lst_verts[id2 - 1]
+                            v3 = lst_verts[id3 - 1]
+
+                            
+
+                            numpTri = np.array([[[v1.x,v1.y,v1.z],
+                                                [v2.x,v2.y,v2.z],
+                                                [v3.x,v3.y,v3.z]]],dtype=np.float64)
+                            self.numpListTri = np.append(self.numpListTri,numpTri,axis=0)
+
+                            
+
+
+                            if self.useTex and vert_attribs[1][1]!= "":
+                                tex_id1 = int(vert_attribs[1][1])
+                                tex_id2 = int(vert_attribs[2][1])
+                                tex_id3 = int(vert_attribs[3][1])
+
+                                u1_t = self.UVCoords[tex_id1 - 1][0]
+                                v1_t = self.UVCoords[tex_id1 - 1][1]
+
+                                u2_t = self.UVCoords[tex_id2 - 1][0]
+                                v2_t = self.UVCoords[tex_id2 - 1][1]
+
+                                u3_t = self.UVCoords[tex_id3 - 1][0]
+                                v3_t = self.UVCoords[tex_id3 - 1][1]
+                                uvTri = np.array(
+                                                [
+                                                    [
+                                                        [u1_t,v1_t],
+                                                        [u2_t,v2_t],
+                                                        [u3_t,v3_t]
+                                                    ]
+                                                ]
+                                                ,dtype=np.float64)
+
+                                self.UVtris  = np.append(self.UVtris,uvTri,axis=0)
+                            self.lst3d_tris.append(Tris3D(lst_verts[id1 - 1],lst_verts[id2 - 1],lst_verts[id3 - 1]))
+                elif  len(str_elm_f[1:]) == 4 :
+                    id1 = int(vert_attribs[1][0])
+                    id2 = int(vert_attribs[2][0])
+                    id3 = int(vert_attribs[3][0])
+                    id4 = int(vert_attribs[4][0])
                     if idx %1 == 0:
                         v1 = lst_verts[id1 - 1]
                         v2 = lst_verts[id2 - 1]
                         v3 = lst_verts[id3 - 1]
-                        numpTri = np.array([[[v1.x,v1.y,v1.z],
-                                             [v2.x,v2.y,v2.z],
-                                             [v3.x,v3.y,v3.z]]],dtype=np.float64)
+                        v4 = lst_verts[id4 - 1]
+                        numpTri = np.array(
+                                        [
+                                            [
+                                                [v1.x,v1.y,v1.z],
+                                                [v2.x,v2.y,v2.z],
+                                                [v3.x,v3.y,v3.z]
+                                            ],
+                                            [
+                                                [v1.x,v1.y,v1.z],
+                                                [v3.x,v3.y,v3.z],
+                                                [v4.x,v4.y,v4.z]
+                                            ]
+                                        ],dtype=np.float64)
                         self.numpListTri = np.append(self.numpListTri,numpTri,axis=0)
+
+
+                        if self.useTex and vert_attribs[1][1] != "" :
+                            # print(vert_attribs)
+                            tex_id1 = int(vert_attribs[1][1])
+                            tex_id2 = int(vert_attribs[2][1])
+                            tex_id3 = int(vert_attribs[3][1])
+                            tex_id4 = int(vert_attribs[4][1])
+
+                            u1_t = self.UVCoords[tex_id1 - 1][0]
+                            v1_t = self.UVCoords[tex_id1 - 1][1]
+
+                            u2_t = self.UVCoords[tex_id2 - 1][0]
+                            v2_t = self.UVCoords[tex_id2 - 1][1]
+
+                            u3_t = self.UVCoords[tex_id3 - 1][0]
+                            v3_t = self.UVCoords[tex_id3 - 1][1]
+
+                            u4_t = self.UVCoords[tex_id4 - 1][0]
+                            v4_t = self.UVCoords[tex_id4 - 1][1]
+
+                            uvTri = np.array([
+                                                [
+                                                    [u1_t,v1_t],
+                                                    [u2_t,v2_t],
+                                                    [u3_t,v3_t]
+                                                ],
+                                                [
+                                                    [u1_t,v1_t],
+                                                    [u3_t,v3_t],
+                                                    [u4_t,v4_t]
+                                                ],
+
+                                            ],dtype=np.float64)
+
+                            self.UVtris  = np.append(self.UVtris,uvTri,axis=0)
+                            
                         self.lst3d_tris.append(Tris3D(lst_verts[id1 - 1],lst_verts[id2 - 1],lst_verts[id3 - 1]))
+                        self.lst3d_tris.append(Tris3D(lst_verts[id1 - 1],lst_verts[id3 - 1],lst_verts[id4 - 1]))
+                    
+                    pass
+                
                 idx  += 1
 
 
-        print("NUMP TRIS[0]: ",self.numpListTri[0], "LIST TRIS[0]: ",self.lst3d_tris[0])
+        # print("NUMP TRIS[0]: ",self.numpListTri[0], "LIST TRIS[0]: ",self.lst3d_tris[0])
+
+    
+
+    def rotateNumpZ(self,degrees:float):
+
+
+        z_dir = np.zeros(shape=(3),dtype= np.float64)
+        z_dir[0]  = 0
+        z_dir[1]  = 0
+        z_dir[2]  = 1
+
+        rotateNumpLstTris(degrees, z_dir ,self.numpListTri)
+
+    def rotateNumpY(self,degrees:float):
+
+
+        z_dir = np.zeros(shape=(3),dtype= np.float64)
+        z_dir[0]  = 0
+        z_dir[1]  = 1
+        z_dir[2]  = 0
+
+        rotateNumpLstTris(degrees, z_dir ,self.numpListTri)
+
+    def rotateNumpX(self,degrees:float):
+
+
+        z_dir = np.zeros(shape=(3),dtype= np.float64)
+        z_dir[0]  = 1
+        z_dir[1]  = 0
+        z_dir[2]  = 0
+
+        rotateNumpLstTris(degrees, z_dir ,self.numpListTri)
 
 
         
-
-
-
-
-
-
-
-        pass
-
-
-
-
+    
     def createNumpObjFromVerts(self):
 
         self.isNumpy = True
@@ -227,10 +457,7 @@ class Mesh:
                     self.numpListTri[tri_idx][point_idx][cord_idx] = cord
                     cord_idx += 1 
 
-                    
-
-                        
-
+                
 
                     pass
                 
@@ -240,6 +467,8 @@ class Mesh:
             tri_idx +=1 
 
         pass
+
+    
     def move(self,trans_vec:Vec3D):
         for i in self.lst_vs:
             i.transVec(trans_vec)

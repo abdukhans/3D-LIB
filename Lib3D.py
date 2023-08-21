@@ -21,14 +21,10 @@ from Mesh import Mesh
 from Camera import Camera, parse_2d_tris,parse_3d_tris 
 import pygame as pg
 
-
-
-
 use_numpy = 'nump' in sys.argv
 use_pygame = 'pygame' in sys.argv
 use_numpy = True
 use_pygame = True
-
 global calc
 calc = 0 
 global n
@@ -50,7 +46,7 @@ near = 1
 m_z = -3
 
 p = -2
-player   = Vec3D(0,p,0)
+player   = Vec3D(0,0,0)
 norm_vec = Vec3D(0,-1,0)
 b1       = Vec3D(1,0,0)
 b2       = Vec3D(0,0,1)
@@ -62,6 +58,9 @@ v5       = Vec3D(-1,1,1)
 v6       = Vec3D(-1,1,-1)
 v7       = Vec3D(-1,-1,1)
 v8       = Vec3D(-1,-1,-1)
+v9       = Vec3D(-0.9,-1.5,-1)
+v10      = Vec3D(0,-2,-1)
+v11      = Vec3D(0,4,1)
 lst_vs   = [v1,v2,v3,v4,v5,v6,v7,v8]
 tri1     = Tris3D(v1,v3,v2)
 tri2     = Tris3D(v1,v4,v3)
@@ -76,13 +75,32 @@ tri10    = Tris3D(v5,v4,v1)
 tri11    = Tris3D(v1,v2,v6)
 tri12    = Tris3D(v6,v5,v1)
 tri13    = Tris3D(v8,v7,v1,col="red")
+tri14    = Tris3D(v9,v10,v11,col="red")
 lst_tris = [tri1,tri2,tri3, tri4,tri5,tri6,tri7,tri8,tri9,tri10,tri11,tri12]
-lst_tris = [tri6]
-cube     = Mesh(lst_tris)
-cube.move(Vec3D(0,2,0))
-cube.createNumpObjFromVerts()
+lst_tris = [tri6,tri14]
+# cube     = Mesh(lst_tris)
+# cube.move(Vec3D(0,2,0))
+# cube.createNumpObjFromVerts()
 
-cube     = Mesh([],file_path="teapot.obj",use_numpy=use_numpy)
+cottage_string = "C:/Users/abdul/OneDrive/Documents/CODING HOBBIES/3D Lib Py/ObjFolder/cottage_obj.obj"
+video_ship     = "C:/Users/abdul/OneDrive/Documents/CODING HOBBIES/3D Lib Py/ObjFolder/VideoShip.obj"
+axis           = "C:/Users/abdul/OneDrive/Documents/CODING HOBBIES/3D Lib Py/ObjFolder/Axis.obj"
+Mountain       = "C:/Users/abdul/OneDrive/Documents/CODING HOBBIES/3D Lib Py/ObjFolder/Mountain.obj"
+teapot         = "teapot.obj"
+zDepthTest     = "C:/Users/abdul/OneDrive/Documents/CODING HOBBIES/3D Lib Py/ObjFolder/Test_obj.obj" 
+shpere_obj     = "C:/Users/abdul/OneDrive/Documents/CODING HOBBIES/3D Lib Py/ObjFolder/Sphere.obj" 
+cube_obj       = "C:/Users/abdul/OneDrive/Documents/CODING HOBBIES/3D Lib Py/ObjFolder/Cube.obj" 
+test_raster    = "C:/Users/abdul/OneDrive/Documents/CODING HOBBIES/3D Lib Py/ObjFolder/TestRaster.obj" 
+test_raster2   = "C:/Users/abdul/OneDrive/Documents/CODING HOBBIES/3D Lib Py/ObjFolder/Test2Raster.obj"
+cottage_text   = "C:/Users/abdul/OneDrive/Documents/CODING HOBBIES/3D Lib Py/34-cottage_textures/cottage_textures/cottage_diffuse.png" 
+test_png       = "test.png"
+test2_png       = "test2.png"
+
+cube           = Mesh([],file_path=test_raster2,texturePath=test2_png,use_numpy=use_numpy)
+
+
+# cube.rotateNumpX(90)
+# cube.rotateNumpZ(-90)
 
 
 
@@ -90,11 +108,9 @@ cube     = Mesh([],file_path="teapot.obj",use_numpy=use_numpy)
 # cube.scale(0.2)
 # cube.rotateX_(-90)
 pixelArr = np.zeros(shape=(width*height*3),dtype=np.uint8)
-cam      = Camera(player,norm_vec,b1,b2,height=height,width=width,near=1,fov=90,usePygame=use_pygame,pixelArray=pixelArr)
-
-
-
-
+cam      = Camera(player,norm_vec,b1,b2,height=height,width=width,near=1,far=80,fov=90,usePygame=use_pygame,pixelArray=pixelArr)
+# cam.forward(-30)
+# cam.incrementZ(5)
 
 
 def main():
@@ -112,6 +128,7 @@ def main():
 
     pos = Vec3D(1,0,4)
     while( True):
+
         start  = t.default_timer()
         upArr   = win32api.GetKeyState(0x26)
         downArr = win32api.GetKeyState(0x28)
@@ -127,7 +144,6 @@ def main():
             cam.backward(step)
         if(righArr !=0 and righArr != 1 ):
             cam.right(step)
-            
         if(leftArr !=0 and leftArr != 1 ):
             cam.left(step)
         if(w !=0 and  w != 1 ):
@@ -161,7 +177,7 @@ def main():
                 cam.drawMesh(cube,wireFrame=False,lighting=True)
             break
         else:
-            cam.drawMesh(cube,wireFrame=False,lighting=True)
+            cam.drawMesh(cube,wireFrame=False,lighting=True,FillCol=True,cullFace=False)
       
         if parse_2d_tris or parse_3d_tris:
             break
@@ -177,7 +193,7 @@ def main():
 
         #cam.printPlayer()
         # if n ==0:
-        #     print(len(cam.drawn_tri),"\n")
+        #     print(len(cam.drawn_tri),"/n")
         
         
         if not(use_pygame):
@@ -186,7 +202,7 @@ def main():
         else:
 
             
-            win.fill((0,0,0))
+            # win.fill((0,0,0))
 
             for event in pg.event.get():
                 if event.type == pg.QUIT:

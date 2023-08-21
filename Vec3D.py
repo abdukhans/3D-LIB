@@ -119,6 +119,11 @@ class Vec3D:
             self.x*other.y - self.y*other.x)
 
     def normalizeVec(self):
+
+        if self.magnitude() == 0:
+            return self
+
+
         return (1/self.magnitude())*self
 
     def __str__(self):

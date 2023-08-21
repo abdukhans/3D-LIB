@@ -142,6 +142,12 @@ def makeTri2D(p1:np.ndarray,p2:np.ndarray,p3:np.ndarray):
     len_clip : This is a variable that holds ends up holding the number of triangles that are in the
                clip buffer
 
+    uvTrisBc : This will be a buffer of trianlges that will contain the uv coords of the triangles.
+               Note that this will be an N by 3 by 2 array
+    
+    uvTrisAc : This will be a resulting buffer of trianlges that will contain the new uv coords of the clipped triangles.
+               Note that this will be an N by 3 by 2 array
+
 
     RET:
         It will return a list of 2d triangles in numpy array from. Where the last element in the 
@@ -151,9 +157,10 @@ def makeTri2D(p1:np.ndarray,p2:np.ndarray,p3:np.ndarray):
 """
 @njit
 def ClipAgainstLine2D(line_n:np.ndarray, line_p: np.ndarray, lst_tris:np.ndarray, num_tris:float,zbuff_ac_intrim:np.ndarray,
-                    zbuff_bc:np.ndarray ):
+                    zbuff_bc:np.ndarray, uvTrisBc:np.ndarray,uvTrisAc:np.ndarray ):
+    
     int_num_tris = int(num_tris)
-    clipped  = np.empty(shape=int_num_tris*2*3*2 + 1 ,dtype=np.float64)
+    clipped  = np.empty(shape=int_num_tris*2*3*2 + 1 ,dtype=np.longdouble)
     last_elm = int_num_tris*2*3*2  
     
     # num_t iterates through triangle space in lst_tris
@@ -183,9 +190,9 @@ def ClipAgainstLine2D(line_n:np.ndarray, line_p: np.ndarray, lst_tris:np.ndarray
         # TODO change this into a for loop instead
         for idx in range(3):            
             if SDistFromLine(line_n,line_p, np.array([lst_ps[2*idx],lst_ps[2*idx+1]])) < 0:
-                lst_vios[2*num_vios]    =  lst_ps[2*idx]
+                lst_vios[2*num_vios]     =  lst_ps[2*idx]
                 lst_vios[2*num_vios + 1] = lst_ps[2*idx + 1 ]
-                lst_vios_ind [num_vios] = idx
+                lst_vios_ind [num_vios]  = idx
 
                 num_vios += 1 
             else:
@@ -205,7 +212,16 @@ def ClipAgainstLine2D(line_n:np.ndarray, line_p: np.ndarray, lst_tris:np.ndarray
             zbuff_ac_intrim[3*len_clip + 1 ] =   zbuff_bc[3*num_t_int + lst_good_ind[1]  ]
             zbuff_ac_intrim[3*len_clip + 2 ] =   zbuff_bc[3*num_t_int + lst_good_ind[2]  ]
             
+
+
+
+            uvTrisAc[len_clip][0] = uvTrisBc[num_t_int][lst_good_ind[0]] 
+            uvTrisAc[len_clip][1] = uvTrisBc[num_t_int][lst_good_ind[1]]  
+            uvTrisAc[len_clip][2] = uvTrisBc[num_t_int][lst_good_ind[2]] 
             #print("Before nv = 0 ", len_clip)
+
+
+            
             len_clip += 1 
             #print("AFTER incr    ", len_clip)
 
@@ -215,26 +231,41 @@ def ClipAgainstLine2D(line_n:np.ndarray, line_p: np.ndarray, lst_tris:np.ndarray
             gp1x,gp1y     =  lst_good[0],lst_good[1]
             gp2x,gp2y     =  lst_good[2],lst_good[3]
 
+            uv_gp1        =  uvTrisBc[num_t_int][lst_good_ind[0]]
+            uv_gp2        =  uvTrisBc[num_t_int][lst_good_ind[1]]
+            
+            uv_vio        =  uvTrisBc[num_t_int][lst_vios_ind[0]]
+
             if gp1y < gp2y:
                 gp1x,gp2x= gp2x, gp1x
                 gp1y,gp2y= gp2y, gp1y
 
+                uv_gp1,uv_gp2 = uv_gp2,uv_gp1 
+
                 lst_good_ind[0],lst_good_ind[1] = lst_good_ind[1],lst_good_ind[0] 
+
+
 
             vio_p   = np.array([vio_px,vio_py])
             gp1     = np.array([gp1x,gp1y])
             gp2     = np.array([gp2x,gp2y])
             t1      = np.zeros(shape=(1),dtype=np.float64)
             t2      = np.zeros(shape=(1),dtype=np.float64)
-            n1_poi  = FindIntersectPoi2D(line_n, line_p,vio_p , gp1 ,t1 )
-            n2_poi  = FindIntersectPoi2D(line_n, line_p,vio_p , gp2 ,t2 )
+            n1_poi  = FindIntersectPoi2D(line_n, line_p, gp1 , vio_p,t1 )
+            n2_poi  = FindIntersectPoi2D(line_n, line_p, gp2 , vio_p,t2 )
 
             gp1z   = zbuff_bc[3*num_t_int +  lst_good_ind[0] ]
             gp2z   = zbuff_bc[3*num_t_int +  lst_good_ind[1] ]
             vio_pz = zbuff_bc[3*num_t_int +  lst_vios_ind[0] ]
 
-            z1:float   = lerp(gp1z,vio_pz, t1[0])
+            z1   = lerp(gp1z,vio_pz, t1[0])
             z2   = lerp(gp2z,vio_pz, t2[0])
+
+            uv_n1 = lerp(uv_gp1,uv_vio,t1[0])
+            uv_n2 = lerp(uv_gp2,uv_vio,t2[0])
+
+
+
 
             #print(z2)
             # n1_tri  = Tris2D (n1_poi, gp1 , gp2 )  is simulated below
@@ -245,10 +276,13 @@ def ClipAgainstLine2D(line_n:np.ndarray, line_p: np.ndarray, lst_tris:np.ndarray
             clipped[6*len_clip + 4  ] =  gp2[0]
             clipped[6*len_clip + 5  ] =  gp2[1]
 
-            zbuff_ac_intrim[3*len_clip + 0 ] = 0
+            zbuff_ac_intrim[3*len_clip + 0 ] = z1
             zbuff_ac_intrim[3*len_clip + 1 ] = gp1z
             zbuff_ac_intrim[3*len_clip + 2 ] = gp2z
 
+            uvTrisAc[len_clip][0] = uv_n1
+            uvTrisAc[len_clip][1] = uv_gp1
+            uvTrisAc[len_clip][2] = uv_gp2
             len_clip += 1 
 
 
@@ -261,9 +295,14 @@ def ClipAgainstLine2D(line_n:np.ndarray, line_p: np.ndarray, lst_tris:np.ndarray
             clipped[6*len_clip + 4  ] =  gp2[0] 
             clipped[6*len_clip + 5  ] =  gp2[1]
 
-            zbuff_ac_intrim[3*len_clip + 0 ] =  z1
+            zbuff_ac_intrim[3*len_clip + 0 ] = z1
             zbuff_ac_intrim[3*len_clip + 1 ] = z2
             zbuff_ac_intrim[3*len_clip + 2 ] = gp2z
+
+
+            uvTrisAc[len_clip][0] = uv_n1
+            uvTrisAc[len_clip][1] = uv_n2
+            uvTrisAc[len_clip][2] = uv_gp2
 
           
 
@@ -274,6 +313,14 @@ def ClipAgainstLine2D(line_n:np.ndarray, line_p: np.ndarray, lst_tris:np.ndarray
             vio_p1 =  np.array([lst_vios[0],lst_vios[1]])
             vio_p2 =  np.array([lst_vios[2],lst_vios[3]])
             gp     =  np.array([lst_good[0],lst_good[1]])
+
+
+            uv_vio1 = uvTrisBc[num_t_int][lst_vios_ind[0]]
+            uv_vio2 = uvTrisBc[num_t_int][lst_vios_ind[1]]
+
+            uv_gp   = uvTrisBc[num_t_int][lst_good_ind[0]]
+
+
             if vio_p1[1] < vio_p2[1]:
                 #print("VIO p1: ", vio_p1)
                 #print("VIO p2: ", vio_p2)
@@ -282,6 +329,7 @@ def ClipAgainstLine2D(line_n:np.ndarray, line_p: np.ndarray, lst_tris:np.ndarray
                 
                 lst_vios_ind[0],  lst_vios_ind[1] =  lst_vios_ind[1],  lst_vios_ind[0]  
 
+                uv_vio1,uv_vio2 = uv_vio2,uv_vio1
 
 
                 #print("VIO p1: ", vio_p1)
@@ -295,11 +343,18 @@ def ClipAgainstLine2D(line_n:np.ndarray, line_p: np.ndarray, lst_tris:np.ndarray
 
             t1      =   np.zeros(shape=(1),dtype=np.float64)
             t2      =   np.zeros(shape=(1),dtype=np.float64)
-            n1_poi  =   FindIntersectPoi2D(line_n,line_p,vio_p1 , gp ,t1 )
-            n2_poi  =   FindIntersectPoi2D(line_n,line_p,vio_p2 , gp ,t2 )
+            n1_poi  =   FindIntersectPoi2D(line_n,line_p, gp,vio_p1 ,t1 )
+            n2_poi  =   FindIntersectPoi2D(line_n,line_p,gp ,vio_p2 ,t2 )
 
-            z1:float = lerp(gpz,vio_p1z, t1[0])
+            z1 = lerp(gpz,vio_p1z, t1[0])
             z2 = lerp(gpz,vio_p2z, t2[0])
+
+            uv_n1 = lerp(uv_gp,uv_vio1,t1[0])
+            uv_n2 = lerp(uv_gp,uv_vio2,t2[0])
+
+
+
+
 
             # n_tri = Tris2D(n1_poi,n2_poi,gp) is simulated below
             # print(z2)
@@ -314,6 +369,11 @@ def ClipAgainstLine2D(line_n:np.ndarray, line_p: np.ndarray, lst_tris:np.ndarray
             zbuff_ac_intrim[3*len_clip + 0 ] = z1 
             zbuff_ac_intrim[3*len_clip + 1 ] = z2
             zbuff_ac_intrim[3*len_clip + 2 ] = gpz
+
+            uvTrisAc[len_clip][0] = uv_n1
+            uvTrisAc[len_clip][1] = uv_n2
+            uvTrisAc[len_clip][2] = uv_gp
+
 
     
             len_clip += 1 
@@ -349,24 +409,35 @@ def ClipAgainstLine2D(line_n:np.ndarray, line_p: np.ndarray, lst_tris:np.ndarray
                       stored between  the indices  3*i and up to but not including 3*i+1 in 
                       zbuff_bc.
 
+    uvTri            : This is a trianlge that will hold all the uv cords of all the points in the 
+                       triangle respectively. This trianlge will be a 3  by 2 matrix
+
+    uvTrisAC         : This will be a resulting buffer of triangles that will contain the correct 
+                       UV-cords
+
     len_clip : A variable that will hold the the 
                number of triangles in the 
                clip buff 
 """
 @njit
-def clip2D(tri:np.ndarray,zbuff_bc_tri_idx:int,zbuff_bc:np.ndarray,zbuff_ac:np.ndarray) -> np.ndarray:
+def clip2D(tri:np.ndarray,zbuff_bc_tri_idx:int,zbuff_bc:np.ndarray,zbuff_ac:np.ndarray, uvTri:np.ndarray, uvTrisAC:np.ndarray) -> np.ndarray:
     # ClipAgainstLine(line_n:Vec2D, line_p: Vec2D, lst_tris:list[Tris2D])
     # ClipAgainstLine2D(line_n:np.ndarray, line_p: np.ndarray, lst_tris:np.ndarray, num_tris:float) 
-
     # x_neg = ClipAgainstLine(Vec2D(1,0),Vec2D(-1,0),lst_tri) is simulated below 
 
     
-    zbuff_ac_intrim = np.zeros(shape=((2*1)*3 + 1) , dtype=np.float64 ) 
+    zbuff_ac_intrim = np.zeros(shape=((2*1)*3 + 1) , dtype=np.longdouble) 
     zbuff_bc_intrim = zbuff_bc[3*zbuff_bc_tri_idx: 3*zbuff_bc_tri_idx + 3 ]
+    
+    
+    uv_bc_intrim = uvTri.reshape(1,3,2)
+    uv_ac_intrim = np.zeros(shape=(2,3,2) , dtype=np.longdouble) 
+    
+
 
     x_neg_n         = np.array([1,0])
     x_neg_p         = np.array([-1,0])
-    x_neg           = ClipAgainstLine2D(x_neg_n,x_neg_p,tri,1.0, zbuff_ac_intrim,zbuff_bc_intrim)
+    x_neg           = ClipAgainstLine2D(x_neg_n,x_neg_p,tri,1.0, zbuff_ac_intrim,zbuff_bc_intrim,uv_bc_intrim,uv_ac_intrim)
     x_neg_num_tris  = int(x_neg[12*1])
 
     #print("x_neg: ", x_neg_num_tris)
@@ -374,55 +445,71 @@ def clip2D(tri:np.ndarray,zbuff_bc_tri_idx:int,zbuff_bc:np.ndarray,zbuff_ac:np.n
 
     if int(x_neg_num_tris) == 0:
         #print("run1")
-        res =  np.zeros(shape=1, dtype=np.float64)
+        res =  np.zeros(shape=1, dtype=np.longdouble)
         res[0]  = 0.0
         return res
 
     # y_pos = ClipAgainstLine(Vec2D(0,-1),Vec2D(0,1),x_neg) is simulated below 
 
     zbuff_bc_intrim = zbuff_ac_intrim
-    zbuff_ac_intrim = np.zeros(shape=((2*x_neg_num_tris)*3 + 1) , dtype=np.float64 ) 
+    zbuff_ac_intrim = np.zeros(shape=((2*x_neg_num_tris)*3 + 1) , dtype=np.longdouble) 
+
+
+    uv_bc_intrim = uv_ac_intrim
+    uv_ac_intrim = np.zeros(shape=(2*x_neg_num_tris,3,2) , dtype=np.longdouble) 
+    
+
+    #print(zbuff_bc_intrim)
 
     y_pos_n        = np.array([0,-1])
     y_pos_p        = np.array([0, 1])
-    y_pos          = ClipAgainstLine2D(y_pos_n,y_pos_p,x_neg,x_neg_num_tris,zbuff_ac_intrim,zbuff_bc_intrim)
+    y_pos          = ClipAgainstLine2D(y_pos_n,y_pos_p,x_neg,x_neg_num_tris,zbuff_ac_intrim,zbuff_bc_intrim,uv_bc_intrim,uv_ac_intrim)
     y_pos_num_tris = int( y_pos[int(x_neg_num_tris) * 12])
     
     #print("y_pos: ", y_pos_num_tris)
     if int(y_pos_num_tris) == 0:
         #print("run2")
-        res =  np.zeros(shape=1, dtype=np.float64)
+        res =  np.zeros(shape=1, dtype=np.longdouble)
         res[0]  = 0.0
         return res
 
 
     #  ClipAgainstLine(Vec2D(-1,0),Vec2D(1,0),y_pos) is simulated below
     zbuff_bc_intrim = zbuff_ac_intrim
-    zbuff_ac_intrim = np.zeros(shape=((2*y_pos_num_tris)*3 + 1) , dtype=np.float64 ) 
+    zbuff_ac_intrim = np.zeros(shape=((2*y_pos_num_tris)*3 + 1) ,dtype=np.longdouble ) 
+
+    uv_bc_intrim = uv_ac_intrim
+    uv_ac_intrim = np.zeros(shape=(2*y_pos_num_tris,3,2) , dtype=np.longdouble) 
+    
+
     x_pos_n        = np.array([-1,0])
     x_pos_p        = np.array([1 ,0])
-    x_pos          = ClipAgainstLine2D(x_pos_n,x_pos_p,y_pos,y_pos_num_tris,zbuff_ac_intrim,zbuff_bc_intrim)
+    x_pos          = ClipAgainstLine2D(x_pos_n,x_pos_p,y_pos,y_pos_num_tris,zbuff_ac_intrim,zbuff_bc_intrim,uv_bc_intrim,uv_ac_intrim)
     x_pos_num_tris = int(x_pos[12*int(y_pos_num_tris)])
 
     #print("x_pos: ", x_pos_num_tris)
     if int(x_pos_num_tris) == 0 :
         #print("run3")
-        res =  np.zeros(shape=1, dtype=np.float64)
+        res =  np.zeros(shape=1, dtype=np.longdouble)
         res[0]  = 0.0
         return res
 
 
     #y_neg = ClipAgainstLine(Vec2D(0,1),Vec2D(0,-1),x_pos) is simulated below
     zbuff_bc_intrim = zbuff_ac_intrim
-    zbuff_ac_intrim = np.zeros(shape=((2*x_pos_num_tris)*3 + 1) , dtype=np.float64 ) 
+    zbuff_ac_intrim = np.zeros(shape=((2*x_pos_num_tris)*3 + 1) , dtype=np.longdouble ) 
+
+    uv_bc_intrim = uv_ac_intrim
+    uv_ac_intrim = np.zeros(shape=(2*x_pos_num_tris,3,2) , dtype=np.longdouble)
+
     y_neg_n        = np.array([0,1])
     y_neg_p        = np.array([0,-1])
-    y_neg          = ClipAgainstLine2D(y_neg_n,y_neg_p,x_pos,x_pos_num_tris,zbuff_ac_intrim,zbuff_bc_intrim)
+    y_neg          = ClipAgainstLine2D(y_neg_n,y_neg_p,x_pos,x_pos_num_tris,zbuff_ac_intrim,zbuff_bc_intrim,uv_bc_intrim,uv_ac_intrim)
     y_neg_num_tris = int(y_neg[12*int(x_pos_num_tris)])
     #print("y_neg: ", y_neg_num_tris)
     if y_neg_num_tris == 0 :
         #print("run4")
-        res =  np.zeros(shape=1, dtype=np.float64)
+        res =  np.zeros(shape=1, dtype=np.longdouble)
         res[0]  = 0.0
         return res
 
@@ -431,6 +518,8 @@ def clip2D(tri:np.ndarray,zbuff_bc_tri_idx:int,zbuff_bc:np.ndarray,zbuff_ac:np.n
 
 
     zbuff_ac[3*zbuff_ac_tri_idx :  3*zbuff_ac_tri_idx + 3*y_neg_num_tris ] = zbuff_ac_intrim[0 : 3*y_neg_num_tris  ]
+
+    uvTrisAC[zbuff_ac_tri_idx: zbuff_ac_tri_idx + y_neg_num_tris ] = uv_ac_intrim[0 : y_neg_num_tris ]
 
     zbuff_ac[-1] += y_neg_num_tris
 
