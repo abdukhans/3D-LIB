@@ -99,3 +99,28 @@ def crossProd3(v1:np.ndarray,v2:np.ndarray):
     cross[1] = -( x1*z2 - z1*x2) 
     cross[2] =    x1*y2 - y1*x2 
     return cross
+
+
+# @njit
+# def reduce(lst:np.ndarray, func:function ):
+
+#     for i in 
+
+
+"""
+    This function just returns weather or not
+    each entry in both numpy arrays are roughly equal 
+    to some epsilon and returns false when two entries 
+    are not 'close' . 
+"""
+@njit
+def is_close(x:np.ndarray, y: np.ndarray,eps= 0.0001):
+    
+    for i in range(len(x)):
+
+        if  abs(x[i] - y[i] ) > eps:
+            return False
+
+
+    return True 
+    

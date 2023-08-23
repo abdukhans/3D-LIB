@@ -475,9 +475,6 @@ class Camera:
     def __init__(self, player_head: Vec3D, norm_vec, b1:Vec3D, b2:Vec3D,  height=600,width=600, 
                 near=1, far=800,fov=90,usePygame=False,pixelArray=np.empty(shape=(0),dtype=np.uint8)):
         self.player_head = player_head
-
-    
-
         self.usePygame = usePygame
         self.zaw   = 0 
         self.pitch = 0 
@@ -711,7 +708,7 @@ class Camera:
             self.draw_tris_nump(mesh.numpListTri,mesh.UVtris,mesh.TextBuff,cullFace=cullFace,FillCol=FillCol,wireFrame=wireFrame)
     def unDrawTris(self,lighting=True):
         if self.useNumpy and self.usePygame:
-            clear(self.pixelArray,self.width*self.height*3)
+            clear(self.pixelArray,self.width*self.height*3, 100)
             return
         if self.useNumpy:
             for poly in self.drawn_tri:

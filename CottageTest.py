@@ -20,7 +20,7 @@ from Utils import utils as ut
 from Mesh import Mesh
 from Camera import Camera, parse_2d_tris,parse_3d_tris 
 import pygame as pg
-
+import os
 use_numpy = 'nump' in sys.argv
 use_pygame = 'pygame' in sys.argv
 use_numpy = True
@@ -98,6 +98,7 @@ test_png       = "test.png"
 
 cube           = Mesh([],file_path=cottage_string,texturePath=cottage_text,use_numpy=use_numpy)
 
+#cube.getTri(108)
 
 cube.rotateNumpX(90)
 cube.rotateNumpZ(-90)
@@ -127,7 +128,6 @@ def main():
 
     pos = Vec3D(1,0,4)
     while( True):
-
         start  = t.default_timer()
         upArr   = win32api.GetKeyState(0x26)
         downArr = win32api.GetKeyState(0x28)
@@ -155,6 +155,15 @@ def main():
 
         if (d != 0 and d != 1):
             cam.rotateZ_(-rot)
+
+
+        # print( "Player head: ", cam.player_head )
+        # print( "a          : ", cam.a )
+        # print( "b          : ", cam.b)
+        # print( "c          : ", cam.c )
+        
+        
+        
             
         i += 1
         x,y,z = 1,1,3
@@ -176,15 +185,10 @@ def main():
                 cam.drawMesh(cube,wireFrame=False,lighting=True)
             
         else:
-            cam.drawMesh(cube,wireFrame=False,lighting=True,FillCol=True,cullFace=False)
+            cam.drawMesh(cube,wireFrame=False,lighting=True,FillCol=True,cullFace=True)
       
         if parse_2d_tris or parse_3d_tris:
             break
-
-
-
-
-      
 
         
         #cube.move(Vec3D(-x,-y,-z))
@@ -194,6 +198,9 @@ def main():
         # if n ==0:
         #     print(len(cam.drawn_tri),"/n")
         
+        
+        # print(f"Player head: {cam.player_head}a          : {cam.a}b          : {cam.b}c          : {cam.c}" ,end='\r', flush=True)
+
         
         if not(use_pygame):
             update(60)
@@ -216,6 +223,10 @@ def main():
             
         # n+= 1
 
+     
+
+
+
        
 
        
@@ -223,6 +234,14 @@ def main():
         end = t.default_timer()
         fps ="FPS: " + str(1/(end - start))
 
+        # os.system('cls')
+
+
+
+
+        
+
+        # print(f"Player head: {cam.player_head}" ,end='\r', flush=True)
         if not(use_pygame):
             win.master.title(fps)
         else:
@@ -232,10 +251,12 @@ def main():
 
     if profileMode:
         stats = pstats.Stats(pr)
-        """numpFast2.inspect_types()    
+        """
+        numpFast2.inspect_types()    
         numpFast3.inspect_types()
         dotProd.inspect_types()    
-        get_len.inspect_types()"""
+        get_len.inspect_types()
+        """
         stats.sort_stats(pstats.SortKey.TIME)
         stats.reverse_order()
         stats.print_stats()

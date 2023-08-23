@@ -409,6 +409,12 @@ class Mesh:
         # print("NUMP TRIS[0]: ",self.numpListTri[0], "LIST TRIS[0]: ",self.lst3d_tris[0])
 
     
+    def getTri(self , idx):
+        self.numpListTri = self.numpListTri[idx].reshape(1,3,3)
+        self.UVtris = self.UVtris[idx].reshape(1,3,2)
+
+
+
 
     def rotateNumpZ(self,degrees:float):
 

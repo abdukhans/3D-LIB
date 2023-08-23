@@ -212,9 +212,9 @@ def lerp(a:float,b:float,t:float):
 
 
 @njit
-def clear(pixelArray:np.ndarray, size:int):
+def clear(pixelArray:np.ndarray, size:int, val=0):
     for i in range(size):
-        pixelArray[i] = 0
+        pixelArray[i] = val
 
 
 
@@ -515,6 +515,7 @@ def TestEdgeCases(pixelArr:np.ndarray,width,height):
 
 
 
+de_bug = False
 @njit
 def DrawTris(Lst_tri:np.ndarray, pixelArr:np.ndarray,width:int,height:int , 
              num_tris:int,trianglZbuff:np.ndarray,depthBuffer:np.ndarray,
@@ -536,7 +537,7 @@ def DrawTris(Lst_tri:np.ndarray, pixelArr:np.ndarray,width:int,height:int ,
         tri_point_idx +=2
         p2  = Lst_tri[tri_point_idx : tri_point_idx + 2 ]
         tri_point_idx +=2
-        p3  = Lst_tri[tri_point_idx: tri_point_idx + 2 ]
+        p3  = Lst_tri[tri_point_idx:  tri_point_idx + 2 ]
 
 
         if use_tex:
@@ -604,12 +605,13 @@ def DrawTris(Lst_tri:np.ndarray, pixelArr:np.ndarray,width:int,height:int ,
 
         
 
-        
+        eps = 0.00001
         # print("s1z: " , s1z )
         # print("s2z: " , s2z )
         # print("s3z: " , s3z )
         # print("-")
           
+
         if FillCol:
             
             
@@ -647,6 +649,7 @@ def DrawTris(Lst_tri:np.ndarray, pixelArr:np.ndarray,width:int,height:int ,
 
 
             # TOP HALF: s1y -> s2y
+            rev = False
             da = 0 
             db = 0 
             
@@ -656,12 +659,13 @@ def DrawTris(Lst_tri:np.ndarray, pixelArr:np.ndarray,width:int,height:int ,
             t_c_step_inrc =  1 / dys3s1 if  (dys3s1!=0 ) else 0 
             t_c = 0 
 
+            # start_tex  = np.array([-1,-1],dtype=np.float64) 
+            # end_tex    = np.array([-1,-1],dtype=np.float64) 
             if (dys2s1 != 0):
     
                 if use_tex:
                     da_tex =      np.array([dus2s1/dys2s1, dvs2s1/dys2s1   ], dtype=np.float64 ) 
                     
-
                 t_a_step_inrc = 1 / dys2s1
                 t_a = 0 
                 da = dxs2s1 /dys2s1
@@ -669,18 +673,23 @@ def DrawTris(Lst_tri:np.ndarray, pixelArr:np.ndarray,width:int,height:int ,
                 if dys3s1 != 0 :
                     db = dxs3s1 / dys3s1
                     if use_tex:
-                        db_tex = np.array([dus3s1/dys3s1, dvs3s1/dys3s1   ], dtype=np.float64 ) 
+                        db_tex = np.array([dus3s1/dys3s1, dvs3s1/dys3s1], dtype=np.float64 ) 
 
                 for y in range(s1y,s2y+1,1):
-                    start_x:int  =   (s1x + (y - s1y)*da)
-                    end_x:int    =   (s1x + (y - s1y)*db)
-
+                    start_x  =   (s1x + (y - s1y)*da)
+                    end_x    =   (s1x + (y - s1y)*db)
 
                     if use_tex:
                         start_tex:np.ndarray    =   (uv1 + (y - s1y) * da_tex )
                         end_tex: np.ndarray     =   (uv1 + (y - s1y) * db_tex )
 
+                        
+
                     
+                    
+
+
+
 
                     start_z =  lerp(s1z,s2z,t_a)
                     end_z   =  lerp(s1z,s3z,t_c) 
@@ -689,10 +698,25 @@ def DrawTris(Lst_tri:np.ndarray, pixelArr:np.ndarray,width:int,height:int ,
                         start_x,end_x  = end_x , start_x
                         start_z,end_z  = end_z , start_z  
                         start_tex,end_tex = end_tex,start_tex 
+                        rev = True
 
+                    if y == s2y:
+                        top_start_tex = start_tex
+                        top_end_tex   = end_tex
+
+                        top_start_z = start_z
+                        top_end_z   = end_z
+
+
+
+
+                    
+                    start_x = int(round(start_x))
+                    end_x   = int(round(end_x))
         
                     #drawLine(start_x,y,end_x,p3y,pixelArr,width,height,R,G,B)
-                    t_a_step_horz_incr = 1 / (end_x - start_x ) if  (end_x - start_x !=0 ) else 0 
+                    dx_horz = int( round(end_x) - round(start_x))
+                    t_a_step_horz_incr = 1 / (dx_horz ) if  (dx_horz !=0 ) else 0 
                     t_a_horz = 0 
                     for x in range(int(start_x),int(end_x+1)):
                         
@@ -727,7 +751,25 @@ def DrawTris(Lst_tri:np.ndarray, pixelArr:np.ndarray,width:int,height:int ,
                                 #     print("cz: ",cur_z)
                                 #     print("t_ahorz: " , t_a_horz)
                                 #     print("___")
+
+                                test1 = u < 0 or v < 0  or u > 1 or v > 1
                                 
+                                
+                                test2 = t_a_horz  - eps > 1
+                                if False and test1:
+                                    print("\n")
+                                    print("start_tex    : " , start_tex)
+                                    print("end_tex      : " , end_tex)
+                                    print("u            : " , u)
+                                    print("v            : " , v)
+                                    print("cuv          : " , cur_uv)
+                                    print("cz           : " , cur_z)
+                                    print("t_ahorz      : " , t_a_horz)
+                                    print("start_x      : " , start_x)
+                                    print("end_x        : " , end_x)
+                                    print("dx_horz      : " , dx_horz)
+                                    print("t_ahorz_inc  : " , t_a_step_horz_incr)
+                                    print("___")
 
                                 # if v > 1 or u > 1:
                                 #     print("u: " , u)
@@ -775,8 +817,22 @@ def DrawTris(Lst_tri:np.ndarray, pixelArr:np.ndarray,width:int,height:int ,
                         t_a_horz+=t_a_step_horz_incr
 
                     t_a += t_a_step_inrc
-                    t_c += t_c_step_inrc
+                   
 
+                    if y != s2y:
+                        t_c += t_c_step_inrc
+
+
+
+
+            # if rev:
+            #     top_start_tex = end_tex
+            #     top_end_tex   = start_tex
+            # else:
+            #     top_start_tex = start_tex
+            #     top_end_tex   = end_tex
+
+            # rev = False
             # Bottom Half: s2y -> s3y
 
             da = 0 
@@ -795,7 +851,6 @@ def DrawTris(Lst_tri:np.ndarray, pixelArr:np.ndarray,width:int,height:int ,
                     if use_tex:
                         db_tex = np.array([dus3s1/dys3s1, dvs3s1/dys3s1   ], dtype=np.float64 ) 
 
-
                 
 
                 t_b_step_inrc = 1 / dys3s2 if(dys3s2 != 0) else 0
@@ -803,25 +858,56 @@ def DrawTris(Lst_tri:np.ndarray, pixelArr:np.ndarray,width:int,height:int ,
 
 
                 for y in range(s2y,s3y+1,1):
-                    start_x:int =     (s2x + (y - s2y)*da)
-                    end_x:int     =   (s1x + (y - s1y)*db)
+                    start_x       =     (s2x + (y - s2y)*da)
+                    end_x         =     (s1x + (y - s1y)*db)
 
                     start_z = lerp(s2z,s3z,t_b)
                     end_z =   lerp(s1z,s3z,t_c)
 
+
+                    dy_2  = y - s2y
+                    dy_1  = y - s1y 
                     if use_tex:
-                        start_tex:np.ndarray    =   (uv2 + (y - s2y) * da_tex )
-                        end_tex: np.ndarray     =   (uv1 + (y - s1y) * db_tex )
+                        start_tex:np.ndarray    =   (uv2 + ((dy_2) * da_tex ))
+                        end_tex: np.ndarray     =   (uv1 + ((dy_1) * db_tex ))
 
                     if start_x > end_x:
                         start_x,end_x = end_x , start_x
                         start_z,end_z  = end_z,start_z
                         start_tex,end_tex = end_tex, start_tex
+                        rev = True
                     #drawLine(start_x,y,end_x,p3y,pixelArr,width,height,R,G,B)
 
-                    
+                    if y == s2y:
 
-                    t_b_step_horz_incr = 1 / (end_x - start_x) if  (end_x - start_x !=0 ) else 0 
+                        if rev:
+                            bottom_start_tex = end_tex
+                            bottom_end_tex   = start_tex
+                        else:
+                            bottom_start_tex = start_tex
+                            bottom_end_tex   = end_tex
+
+
+                        if (dys2s1  > 0 ) and de_bug:    
+                            if not( (ut.is_close(top_start_tex , bottom_start_tex))) and not((ut.is_close(top_end_tex , bottom_start_tex))):
+                                print("top_start_tex     : " , top_start_tex)
+                                print("top_end_tex       : " , top_end_tex)                            
+                                print("bot_start_tex     : " , bottom_start_tex)
+                                print("UV2               : " , uv2)
+                                print("da_tex            : " , da_tex  )
+                                print("dy_2              : " , dy_2  )
+                                print("dy_2*da_tex       : " , dy_2*da_tex  )
+                                print("uv2 + dy_2*da_tex : " , (uv2 + ((dy_2) * da_tex )))
+                                print("tri_idx           : " , tri_idx )
+                                print("_________________________________________")
+
+                            
+
+                    start_x = int(round(start_x))
+                    end_x   = int(round(end_x))
+
+                    dx_horz = int( round(end_x) - round(start_x))
+                    t_b_step_horz_incr = 1 / (dx_horz) if  (dx_horz !=0 ) else 0 
                     t_b_horz  = 0 
                     for x in range(int(start_x),int(end_x+1)):
 
@@ -848,18 +934,25 @@ def DrawTris(Lst_tri:np.ndarray, pixelArr:np.ndarray,width:int,height:int ,
                                 v = cur_uv[1] / cur_z
                                 #print(u,v)
 
-                                
-                                # if u < 0 or v < 0 :
+                        
+                                test1 =  u < 0 or v < 0  or u > 1 or v > 1
+                                test2 = t_b_horz - eps > 1
 
-                                #     print("\n")
-                                #     print("start_tex: " , start_tex)
-                                #     print("end_tex  : " , end_tex)
-                                #     print("u: " , u)
-                                #     print("v: " , v)
-                                #     print("cu: ",cur_uv)
-                                #     print("cz: ",cur_z)
-                                #     print("t_bhorz: " , t_b_horz)
-                                #     print("___")
+                                if False and test1:
+                                    print("\n")
+                                    print("start_tex    : " , start_tex)
+                                    print("end_tex      : " , end_tex)
+                                    print("u            : " , u)
+                                    print("v            : " , v)
+                                    print("cuv          : ",cur_uv)
+                                    print("cz           : ",cur_z)
+                                    print("t_bhorz      : " , t_b_horz)
+                                    print("start_x      : " , start_x)
+                                    print("end_x        : " , end_x)
+                                    print("dx_horz      : " , dx_horz)
+                                    print("t_bhorz_inc  : " , t_b_step_horz_incr)
+
+                                    print("___")
 
                                 # if v > 1 or u > 1:
                                 #     print("u: " , u)
@@ -876,14 +969,15 @@ def DrawTris(Lst_tri:np.ndarray, pixelArr:np.ndarray,width:int,height:int ,
                                
                                     
                                 pixelArr[width*3*y + 3*x + 0 : width*3*y + 3*x + 3   ] = textBuff[y_t][x_t]
-
+                                col = textBuff[y_t][x_t]
 
                             else:
                                 
 
-                                pixelArr[width*3*y + 3*x + 0 ] = 0.2*int(R)
-                                pixelArr[width*3*y + 3*x + 1 ] = 0.25*int(G)
+                                pixelArr[width*3*y + 3*x + 0 ] = int(R)
+                                pixelArr[width*3*y + 3*x + 1 ] = int(G)
                                 pixelArr[width*3*y + 3*x + 2 ] = int(B)  
+
                             depthBuffer[y][x] = cur_z 
 
                             # if tri_idx == 1:
@@ -909,8 +1003,47 @@ def DrawTris(Lst_tri:np.ndarray, pixelArr:np.ndarray,width:int,height:int ,
 
 
                 pass
-                
         
+
+            
+        
+                
+        not_eq = False
+        idx = 0 
+
+        if de_bug and dys2s1 > 0:
+
+            for i in top_start_tex:
+
+                if abs(bottom_start_tex[idx] - i) > eps:
+                    not_eq = True
+
+
+                idx += 1
+
+            if not(not_eq):
+                idx = 0 
+                for i in top_end_tex:
+
+                    if abs(bottom_end_tex[idx] - i) > eps:
+                        not_eq = True
+                    
+                    idx += 1
+
+
+            
+
+        
+        if not_eq and False:
+            print("Top start    : ", top_start_tex)
+            print("Bottom start : ", bottom_start_tex)
+            print("UV2          : ", uv2 , "\n")
+
+
+            print("Top end      : ", top_end_tex)
+            print("Bottom end   : ", bottom_end_tex)
+            print("UV2          : ", uv2)
+            print("_________________________________")
 
         # line1 = "p1x: {:>7} p1y: {:>7}".format(round(p1x,3),round(p1y,3))
         # line2 = "p2x: {:>7} p2y: {:>7}".format(round(p2x,3),round(p2y,3))
@@ -1031,5 +1164,15 @@ def main():
         pg.display.update()
         clock.tick(60)
 
+
+def test():
+
+    a = np.array( [0.02491912 , 0.00662047])
+
+    return 0 *  a 
+
 if __name__ =="__main__":
-    main()
+    print(test())
+
+ # [0.02491912 0.00662047]
+
